@@ -1,14 +1,15 @@
 # Getting Started with Psyshock Physics
 
-This is the third preview version I am releasing out to the public. It currently
+This is the fifth preview version I am releasing out to the public. It currently
 only supports a small number of use cases. The number of supported use cases
 will grow with each release.
 
 ## Authoring
 
 Currently Psyshock uses the classical Physx components for authoring
-[colliders](Colliders.md). Attach a Sphere Collider, Capsule Collider, or Box
-Collider to the GameObject you wish to convert.
+[colliders](Colliders.md). Attach a Sphere Collider, Capsule Collider, Box
+Collider, or Mesh Collider to the GameObject you wish to convert. Mesh Colliders
+must have their checkbox checked.
 
 There’s one exception. I added support for Compound Colliders and this uses the
 new Collider Authoring component.
@@ -44,21 +45,25 @@ if (collider.type == ColliderType.Sphere)
 ## Simple Queries
 
 -   Current
-    -   Physics.CalculateAabb
+    -   Physics. AabbOf
     -   Physics.Raycast
-    -   Physics.DistanceBetween (Collider vs Collider only)
--   Future
-    -   Physics.DistanceBetween (Point vs Collider)
-    -   Physics.AreIntersecting
+    -   Physics.DistanceBetween
     -   Physics.ColliderCast
+-   Future
+    -   Physics.AreIntersecting
     -   Physics.ComputeContacts
     -   Physics.QuadraticCast
     -   Physics.QuadraticColliderCast
+
+*Warning: Unlike Unity Physics,* `Raycast()` *and* `ColliderCast()` *do not
+report inside hits or “zero-distance” hits. Use a* `DistanceBetween()` *query at
+the start point to get inside hit info.*
 
 ## Simple Modifiers
 
 -   Current
     -   Physics.ScaleCollider
+    -   Physics.CombineAabb
 
 ## Scheduling Jobs
 

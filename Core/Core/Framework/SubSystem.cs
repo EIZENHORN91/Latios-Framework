@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Unity.Collections;
 using Unity.Entities;
@@ -6,16 +6,35 @@ using Unity.Jobs;
 
 namespace Latios
 {
+    /// <summary>
+    /// This is an internal base class for SubSystem
+    /// </summary>
     [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
-    public abstract class SubSystemBase : SystemBase, ILatiosSystem
+    public abstract partial class SubSystemBase : SystemBase, ILatiosSystem
     {
+        /// <summary>
+        /// The latiosWorld of this system
+        /// </summary>
         public LatiosWorld latiosWorld { get; private set; }
 
+        /// <summary>
+        /// The scene blackboard entity for the LatiosWorld of this system
+        /// </summary>
         public BlackboardEntity sceneBlackboardEntity => latiosWorld.sceneBlackboardEntity;
+        /// <summary>
+        /// The world blackboard entity for the LatiosWorld of this system
+        /// </summary>
         public BlackboardEntity worldBlackboardEntity => latiosWorld.worldBlackboardEntity;
 
+        /// <summary>
+        /// Begins a Fluent query chain
+        /// </summary>
         public FluentQuery Fluent => this.Fluent();
 
+        /// <summary>
+        /// Override this method to perform additional filtering to decide if this system should run.
+        /// </summary>
+        /// <returns>true if this system should run</returns>
         public virtual bool ShouldUpdateSystem()
         {
             return Enabled;
@@ -29,6 +48,7 @@ namespace Latios
             }
             else
             {
+                UnityEngine.Debug.LogError($"Potentially missing DisableAutoCreationAttribute for {GetType()}");
                 throw new InvalidOperationException(
                     "The current world is not of type LatiosWorld required for Latios framework functionality. Did you forget to create a Bootstrap?");
             }
@@ -54,6 +74,9 @@ namespace Latios
         internal abstract void OnUpdateInternal();
 
         public EntityQuery GetEntityQuery(EntityQueryDesc desc) => GetEntityQuery(new EntityQueryDesc[] { desc });
+        public EntityQuery GetEntityQuery(EntityQueryDescBuilder desc) => GetEntityQuery(desc);
+
+        public abstract void OnNewScene();
 
         internal JobHandle SystemBaseDependency
         {
@@ -62,7 +85,10 @@ namespace Latios
         }
     }
 
-    public abstract class SubSystem : SubSystemBase
+    /// <summary>
+    /// A base class system which subclasses SystemBase and provides Latios Framework Core features
+    /// </summary>
+    public abstract partial class SubSystem : SubSystemBase
     {
         protected new virtual void OnCreate()
         {
@@ -73,6 +99,13 @@ namespace Latios
         }
 
         protected new abstract void OnUpdate();
+
+        /// <summary>
+        /// Override to get alerted whenever a new sceneBlackboardEntity is created
+        /// </summary>
+        public override void OnNewScene()
+        {
+        }
 
         internal override void OnCreateInternal()
         {

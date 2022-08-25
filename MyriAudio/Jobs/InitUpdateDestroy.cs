@@ -18,21 +18,20 @@ namespace Latios.Myri
             [ReadOnly] public ComponentTypeHandle<AudioSourceOneShot> oneshotHandle;
             [ReadOnly] public EntityTypeHandle                        entityHandle;
             [ReadOnly] public NativeReference<int>                    audioFrame;
+            [ReadOnly] public NativeReference<int>                    lastPlayedAudioFrame;
             [ReadOnly] public ComponentDataFromEntity<AudioSettings>  settingsCdfe;
             public Entity                                             worldBlackboardEntity;
             public int                                                sampleRate;
-            public int                                                samplesPerSubframe;
+            public int                                                samplesPerFrame;
 
             public void Execute(ArchetypeChunk chunk, int chunkIndex)
             {
-                var oneshots        = chunk.GetNativeArray(oneshotHandle);
-                var entities        = chunk.GetNativeArray(entityHandle);
-                var lastAudioFrame  = audioFrame.Value - 1;
-                int samplesPerFrame = samplesPerSubframe * settingsCdfe[worldBlackboardEntity].audioSubframesPerFrame;
+                var oneshots = chunk.GetNativeArray(oneshotHandle);
+                var entities = chunk.GetNativeArray(entityHandle);
                 for (int i = 0; i < oneshots.Length; i++)
                 {
                     var    os           = oneshots[i];
-                    int    playedFrames = lastAudioFrame - os.m_spawnedAudioFrame;
+                    int    playedFrames = lastPlayedAudioFrame.Value - os.m_spawnedAudioFrame;
                     double resampleRate = os.clip.Value.sampleRate / (double)sampleRate;
                     if (os.isInitialized && os.clip.Value.samplesLeftOrMono.Length < resampleRate * playedFrames * samplesPerFrame)
                     {
@@ -89,7 +88,7 @@ namespace Latios.Myri
                         //Todo: Figure out how to bring this optimization back.
                         //if (l.volume > 0f)
                         {
-                            l.itdResolution = math.max(l.itdResolution, 0);
+                            l.itdResolution = math.clamp(l.itdResolution, 0, 15);
 
                             var transform = RigidTransform.identity;
                             if (hasRotation)
@@ -117,6 +116,7 @@ namespace Latios.Myri
             [ReadOnly] public ComponentTypeHandle<LocalToWorld>           ltwHandle;
             public NativeArray<OneshotEmitter>                            emitters;
             [ReadOnly] public NativeReference<int>                        audioFrame;
+            [ReadOnly] public NativeReference<int>                        lastPlayedAudioFrame;
             [ReadOnly] public NativeReference<int>                        lastConsumedBufferId;
             public int                                                    bufferId;
 
@@ -130,7 +130,7 @@ namespace Latios.Myri
                     //In such a case, we still want the one shot to start at the beginning rather than skip the first audio frame.
                     //This is more likely to happen in high framerate scenarios.
                     //This does not solve the problem where the audio frame ticks during DSP and again before the next AudioSystemUpdate.
-                    if ((!oneshot.isInitialized) | (oneshot.m_spawnedBufferId - lastConsumedBufferId.Value > 0))
+                    if ((!oneshot.isInitialized) || (oneshot.m_spawnedBufferId - lastConsumedBufferId.Value > 0 && (lastPlayedAudioFrame.Value - oneshot.m_spawnedAudioFrame >= 0)))
                     {
                         oneshot.m_spawnedBufferId   = bufferId;
                         oneshot.m_spawnedAudioFrame = audioFrame.Value;
@@ -352,20 +352,69 @@ namespace Latios.Myri
             [ReadOnly] public NativeReference<int>                        audioFrame;
             [ReadOnly] public NativeReference<int>                        lastConsumedBufferId;
             public int                                                    bufferId;
+            public int                                                    sampleRate;
+            public int                                                    samplesPerFrame;
 
             public void Execute(ArchetypeChunk chunk, int chunkIndex, int firstEntityIndex)
             {
-                var seed   = math.asuint(audioFrame.Value);
+                var rng    = new Rng.RngSequence(math.asuint(new int2(audioFrame.Value, chunkIndex)));
                 var looped = chunk.GetNativeArray(loopedHandle);
                 for (int i = 0; i < chunk.Count; i++)
                 {
                     var l = looped[i];
 
-                    if (!l.m_initialized)
+                    if (!l.initialized)
                     {
-                        l.m_loopOffsetIndex = (int)((Squirrel3Noise((uint)(firstEntityIndex + i), seed) * (ulong)l.m_clip.Value.loopedOffsets.Length) >> 32);
-                        l.m_initialized     = true;
-                        looped[i]           = l;
+                        if (l.offsetIsBasedOnSpawn)
+                        {
+                            ulong samplesPlayed = (ulong)samplesPerFrame * (ulong)audioFrame.Value;
+                            if (sampleRate == l.clip.Value.sampleRate)
+                            {
+                                int clipStart  = (int)(samplesPlayed % (ulong)l.clip.Value.samplesLeftOrMono.Length);
+                                l.m_loopOffset = l.clip.Value.samplesLeftOrMono.Length - clipStart;
+                            }
+                            else
+                            {
+                                double clipSampleStride             = l.clip.Value.sampleRate / (double)sampleRate;
+                                double samplesPlayedInSourceSamples = samplesPlayed * clipSampleStride;
+                                double clipStart                    = samplesPlayedInSourceSamples % l.clip.Value.samplesLeftOrMono.Length;
+                                // We can't get exact due to the mismatched rate, so we choose a rounded start point between
+                                // the last and first sample by chopping off the fractional part
+                                l.m_loopOffset = (int)(l.clip.Value.samplesLeftOrMono.Length - clipStart);
+                            }
+                            l.m_spawnBufferLow16 = (short)bufferId;
+                        }
+                        else
+                        {
+                            l.m_loopOffset = l.m_clip.Value.loopedOffsets[rng.NextInt(0, l.m_clip.Value.loopedOffsets.Length)];
+                            l.offsetLocked = true;
+                        }
+                        l.initialized = true;
+                        looped[i]     = l;
+                    }
+                    else if (!l.offsetLocked && l.offsetIsBasedOnSpawn)
+                    {
+                        if ((short)lastConsumedBufferId.Value - l.m_spawnBufferLow16 >= 0)
+                        {
+                            l.offsetLocked = true;
+                        }
+                        else
+                        {
+                            // This check compares if the playhead loop advanced past the target start point in the loop
+                            ulong  samplesPlayed                = (ulong)samplesPerFrame * (ulong)audioFrame.Value;
+                            double clipSampleStride             = l.clip.Value.sampleRate / (double)sampleRate;
+                            double samplesPlayedInSourceSamples = samplesPlayed * clipSampleStride;
+                            double clipStart                    = (samplesPlayedInSourceSamples + l.m_loopOffset) % l.clip.Value.samplesLeftOrMono.Length;
+                            // We add a one sample tolerance in case we are regenerating the same audio frame, in which case the old values are fine.
+                            if (clipStart < l.clip.Value.samplesLeftOrMono.Length / 2 && clipStart > 1)
+                            {
+                                // We missed the buffer
+                                clipStart            = samplesPlayedInSourceSamples % l.clip.Value.samplesLeftOrMono.Length;
+                                l.m_loopOffset       = (int)(l.clip.Value.samplesLeftOrMono.Length - clipStart);
+                                l.m_spawnBufferLow16 = (short)bufferId;
+                            }
+                        }
+                        looped[i] = l;
                     }
                 }
 
@@ -422,19 +471,6 @@ namespace Latios.Myri
 
                     default: ErrorCase(); break;
                 }
-            }
-
-            //From https://www.youtube.com/watch?v=LWFzPP8ZbdU
-            uint Squirrel3Noise(uint position, uint seed)
-            {
-                var val  = position * 0x68e31da4;
-                val     *= seed;
-                val     ^= (val >> 8);
-                val     += 0xb5297a4d;
-                val     ^= (val << 8);
-                val     *= 0x1b56c4e9;
-                val     ^= (val >> 8);
-                return val;
             }
 
             void ProcessNoTransform(ArchetypeChunk chunk, int firstEntityIndex)

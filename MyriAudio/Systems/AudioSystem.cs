@@ -10,27 +10,33 @@ using Unity.Transforms;
 
 namespace Latios.Myri.Systems
 {
+    [DisableAutoCreation]
     [UpdateInGroup(typeof(Latios.Systems.PreSyncPointGroup))]
-    public class AudioSystem : SubSystem
+    public partial class AudioSystem : SubSystem
     {
         private DSPGraph             m_graph;
         private LatiosDSPGraphDriver m_driver;
         private AudioOutputHandle    m_outputHandle;
         private int                  m_sampleRate;
-        private int                  m_samplesPerSubframe;
+        private int                  m_samplesPerFrame;
 
         private DSPNode              m_mixNode;
-        private DSPConnection        m_mixToOutputConnection;
+        private DSPConnection        m_mixToLimiterMasterConnection;
         private NativeList<int>      m_mixNodePortFreelist;
         private NativeReference<int> m_mixNodePortCount;
 
-        private DSPNode                m_ildNode;
-        private NativeReference<int>   m_ildNodePortCount;
-        private NativeReference<long>  m_packedFrameCounterBufferId;  //MSB bufferId, LSB frame
-        private NativeReference<int>   m_audioFrame;
-        private NativeReference<int>   m_lastReadBufferId;
-        private int                    m_currentBufferId;
-        private List<ManagedIldBuffer> m_buffersInFlight;
+        private DSPNode       m_limiterMasterNode;
+        private DSPConnection m_limiterMasterToOutputConnection;
+
+        private DSPNode                                     m_ildNode;
+        private NativeReference<int>                        m_ildNodePortCount;
+        private NativeReference<long>                       m_packedFrameCounterBufferId;  //MSB bufferId, LSB frame
+        private NativeReference<int>                        m_audioFrame;
+        private NativeReference<int>                        m_lastPlayedAudioFrame;
+        private NativeReference<int>                        m_lastReadBufferId;
+        private int                                         m_currentBufferId;
+        private List<ManagedIldBuffer>                      m_buffersInFlight;
+        private NativeQueue<AudioFrameBufferHistoryElement> m_audioFrameHistory;
 
         private JobHandle   m_lastUpdateJobHandle;
         private EntityQuery m_aliveListenersQuery;
@@ -47,25 +53,37 @@ namespace Latios.Myri.Systems
             m_ildNodePortCount           = new NativeReference<int>(Allocator.Persistent);
             m_packedFrameCounterBufferId = new NativeReference<long>(Allocator.Persistent);
             m_audioFrame                 = new NativeReference<int>(Allocator.Persistent);
+            m_lastPlayedAudioFrame       = new NativeReference<int>(Allocator.Persistent);
             m_lastReadBufferId           = new NativeReference<int>(Allocator.Persistent);
             m_buffersInFlight            = new List<ManagedIldBuffer>();
+            m_audioFrameHistory          = new NativeQueue<AudioFrameBufferHistoryElement>(Allocator.Persistent);
 
-            worldBlackboardEntity.AddComponentDataIfMissing(new AudioSettings { audioFramesPerUpdate = 3, audioSubframesPerFrame = 1, logWarningIfBuffersAreStarved = false });
+            worldBlackboardEntity.AddComponentDataIfMissing(new AudioSettings
+            {
+                safetyAudioFrames             = 2,
+                audioFramesPerUpdate          = 1,
+                lookaheadAudioFrames          = 0,
+                logWarningIfBuffersAreStarved = false
+            });
 
             //Create graph and driver
             var format   = ChannelEnumConverter.GetSoundFormatFromSpeakerMode(UnityEngine.AudioSettings.speakerMode);
             var channels = ChannelEnumConverter.GetChannelCountFromSoundFormat(format);
-            UnityEngine.AudioSettings.GetDSPBufferSize(out m_samplesPerSubframe, out _);
+            UnityEngine.AudioSettings.GetDSPBufferSize(out m_samplesPerFrame, out _);
             m_sampleRate   = UnityEngine.AudioSettings.outputSampleRate;
-            m_graph        = DSPGraph.Create(format, channels, m_samplesPerSubframe, m_sampleRate);
+            m_graph        = DSPGraph.Create(format, channels, m_samplesPerFrame, m_sampleRate);
             m_driver       = new LatiosDSPGraphDriver { Graph = m_graph };
             m_outputHandle = m_driver.AttachToDefaultOutput();
 
             var commandBlock = m_graph.CreateCommandBlock();
             m_mixNode        = commandBlock.CreateDSPNode<MixStereoPortsNode.Parameters, MixStereoPortsNode.SampleProviders, MixStereoPortsNode>();
             commandBlock.AddOutletPort(m_mixNode, 2);
-            m_mixToOutputConnection = commandBlock.Connect(m_mixNode, 0, m_graph.RootDSP, 0);
-            m_ildNode               = commandBlock.CreateDSPNode<ReadIldBuffersNode.Parameters, ReadIldBuffersNode.SampleProviders, ReadIldBuffersNode>();
+            m_limiterMasterNode = commandBlock.CreateDSPNode<BrickwallLimiterNode.Parameters, BrickwallLimiterNode.SampleProviders, BrickwallLimiterNode>();
+            commandBlock.AddInletPort(m_limiterMasterNode, 2);
+            commandBlock.AddOutletPort(m_limiterMasterNode, 2);
+            m_mixToLimiterMasterConnection    = commandBlock.Connect(m_mixNode, 0, m_limiterMasterNode, 0);
+            m_limiterMasterToOutputConnection = commandBlock.Connect(m_limiterMasterNode, 0, m_graph.RootDSP, 0);
+            m_ildNode                         = commandBlock.CreateDSPNode<ReadIldBuffersNode.Parameters, ReadIldBuffersNode.SampleProviders, ReadIldBuffersNode>();
             unsafe
             {
                 commandBlock.UpdateAudioKernel<SetReadIldBuffersNodePackedFrameBufferId, ReadIldBuffersNode.Parameters, ReadIldBuffersNode.SampleProviders, ReadIldBuffersNode>(
@@ -174,7 +192,11 @@ namespace Latios.Myri.Systems
             {
                 packedFrameCounterBufferId = m_packedFrameCounterBufferId,
                 audioFrame                 = m_audioFrame,
-                lastReadBufferId           = m_lastReadBufferId
+                lastPlayedAudioFrame       = m_lastPlayedAudioFrame,
+                lastReadBufferId           = m_lastReadBufferId,
+                audioFrameHistory          = m_audioFrameHistory,
+                audioSettingsCdfe          = audioSettingsCdfe,
+                worldBlackboardEntity      = worldBlackboardEntity
             }.Schedule();
 
             var ecsCaptureFrameJH = JobHandle.CombineDependencies(ecsJH, captureFrameJH);
@@ -190,6 +212,7 @@ namespace Latios.Myri.Systems
                 audioSettingsCdfe                   = audioSettingsCdfe,
                 worldBlackboardEntity               = worldBlackboardEntity,
                 audioFrame                          = m_audioFrame,
+                audioFrameHistory                   = m_audioFrameHistory,
                 systemMixNodePortFreelist           = m_mixNodePortFreelist,
                 systemMixNodePortCount              = m_mixNodePortCount,
                 systemMixNode                       = m_mixNode,
@@ -201,7 +224,7 @@ namespace Latios.Myri.Systems
                 outputSamplesMegaBuffer             = ildBuffer.buffer,
                 outputSamplesMegaBufferChannels     = ildBuffer.channels,
                 bufferId                            = m_currentBufferId,
-                samplesPerSubframe                  = m_samplesPerSubframe
+                samplesPerFrame                     = m_samplesPerFrame
             }.Schedule(JobHandle.CombineDependencies(captureListenersJH, captureFrameJH, listenerEntitiesJH));
 
             var destroyOneshotsJH = new InitUpdateDestroy.DestroyOneshotsWhenFinishedJob
@@ -210,11 +233,12 @@ namespace Latios.Myri.Systems
                 entityHandle          = entityHandle,
                 oneshotHandle         = oneshotHandle,
                 audioFrame            = m_audioFrame,
+                lastPlayedAudioFrame  = m_lastPlayedAudioFrame,
                 sampleRate            = m_sampleRate,
                 settingsCdfe          = audioSettingsCdfe,
-                samplesPerSubframe    = m_samplesPerSubframe,
+                samplesPerFrame       = m_samplesPerFrame,
                 worldBlackboardEntity = worldBlackboardEntity
-            }.ScheduleParallel(m_oneshotsToDestroyWhenFinishedQuery, 1, ecsCaptureFrameJH);
+            }.ScheduleParallel(m_oneshotsToDestroyWhenFinishedQuery, ecsCaptureFrameJH);
 
             var updateOneshotsJH = new InitUpdateDestroy.UpdateOneshotsJob
             {
@@ -225,10 +249,11 @@ namespace Latios.Myri.Systems
                 parentHandle         = parentHandle,
                 coneHandle           = coneHandle,
                 audioFrame           = m_audioFrame,
+                lastPlayedAudioFrame = m_lastPlayedAudioFrame,
                 lastConsumedBufferId = m_lastReadBufferId,
                 bufferId             = m_currentBufferId,
                 emitters             = oneshotEmitters
-            }.ScheduleParallel(m_oneshotsQuery, 1, destroyOneshotsJH);
+            }.ScheduleParallel(m_oneshotsQuery, destroyOneshotsJH);
 
             var updateLoopedJH = new InitUpdateDestroy.UpdateLoopedsJob
             {
@@ -241,8 +266,10 @@ namespace Latios.Myri.Systems
                 audioFrame           = m_audioFrame,
                 lastConsumedBufferId = m_lastReadBufferId,
                 bufferId             = m_currentBufferId,
+                sampleRate           = m_sampleRate,
+                samplesPerFrame      = m_samplesPerFrame,
                 emitters             = loopedEmitters
-            }.ScheduleParallel(m_loopedQuery, 1, ecsCaptureFrameJH);
+            }.ScheduleParallel(m_loopedQuery, ecsCaptureFrameJH);
 
             //No more ECS
             var oneshotsCullingWeightingJH = new CullingAndWeighting.OneshotsJob
@@ -290,7 +317,7 @@ namespace Latios.Myri.Systems
                 forIndexToListenerAndChannelIndices = forIndexToListenerAndChannelIndices.AsDeferredJobArray(),
                 outputSamplesMegaBuffer             = ildBuffer.buffer.AsDeferredJobArray(),
                 sampleRate                          = m_sampleRate,
-                samplesPerSubframe                  = m_samplesPerSubframe,
+                samplesPerFrame                     = m_samplesPerFrame,
                 audioFrame                          = m_audioFrame
             }.Schedule(forIndexToListenerAndChannelIndices, 1, JobHandle.CombineDependencies(updateListenersGraphJH, oneshotsBatchingJH));
 
@@ -303,7 +330,7 @@ namespace Latios.Myri.Systems
                 forIndexToListenerAndChannelIndices = forIndexToListenerAndChannelIndices.AsDeferredJobArray(),
                 outputSamplesMegaBuffer             = ildBuffer.buffer.AsDeferredJobArray(),
                 sampleRate                          = m_sampleRate,
-                samplesPerSubframe                  = m_samplesPerSubframe,
+                samplesPerFrame                     = m_samplesPerFrame,
                 audioFrame                          = m_audioFrame
             }.Schedule(forIndexToListenerAndChannelIndices, 1, JobHandle.CombineDependencies(oneshotSamplingJH, loopedBatchingJH));
 
@@ -359,9 +386,11 @@ namespace Latios.Myri.Systems
         {
             //UnityEngine.Debug.Log("AudioSystem.OnDestroy");
             var commandBlock = m_graph.CreateCommandBlock();
-            commandBlock.Disconnect(m_mixToOutputConnection);
+            commandBlock.Disconnect(m_mixToLimiterMasterConnection);
+            commandBlock.Disconnect(m_limiterMasterToOutputConnection);
             commandBlock.ReleaseDSPNode(m_ildNode);
             commandBlock.ReleaseDSPNode(m_mixNode);
+            commandBlock.ReleaseDSPNode(m_limiterMasterNode);
             commandBlock.Complete();
             AudioOutputExtensions.DisposeOutputHook(ref m_outputHandle);
             m_driver.Dispose();
@@ -372,7 +401,9 @@ namespace Latios.Myri.Systems
             m_ildNodePortCount.Dispose();
             m_packedFrameCounterBufferId.Dispose();
             m_audioFrame.Dispose();
+            m_lastPlayedAudioFrame.Dispose();
             m_lastReadBufferId.Dispose();
+            m_audioFrameHistory.Dispose();
 
             foreach (var buffer in m_buffersInFlight)
             {

@@ -6,6 +6,148 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic
 Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [0.5.6] – 2022-8-21
+
+Officially supports Entities [0.50.1] – [0.51.1]
+
+### Changed
+
+-   Updated Core to v0.5.6
+-   Updated Myri to v0.5.6
+-   Updated Kinemation to v0.5.6
+
+## [0.5.5] – 2022-8-14
+
+Officially supports Entities [0.50.1] – [0.51.1]
+
+### Changed
+
+-   Updated Core to v0.5.5
+-   Updated Kinemation to v0.5.5
+
+## [0.5.4] – 2022-7-28
+
+Officially supports Entities [0.50.1]
+
+### Changed
+
+-   Updated Kinemation to v0.5.4
+
+## [0.5.3] – 2022-7-4
+
+Officially supports Entities [0.50.1]
+
+### Changed
+
+-   Updated Kinemation to v0.5.3
+
+## [0.5.2] – 2022-7-3
+
+Officially supports Entities [0.50.1]
+
+### Fixed
+
+-   Fixed Physics samples in projects that don’t use SceneManager
+
+### Changed
+
+-   Updated Core to v0.5.2
+-   Updated Psyshock to v0.5.2
+-   Updated Myri to v0.5.2
+-   Updated Kinemation to v0.5.2
+-   Added Optimization Adventure Part 7
+
+## [0.5.1] – 2022-6-19
+
+Officially supports Entities [0.50.1]
+
+### Changed
+
+-   Updated Core to v0.5.1
+-   Updated Kinemation to v0.5.1
+-   Updated the Getting Started guide for Kinemation to reflect improvements
+
+## [0.5.0] – 2022-6-13
+
+Officially supports Entities [0.50.1]
+
+### Added
+
+-   Kinemation Animation and Rendering
+-   Third-Party Notice for ACL (MIT)
+
+### Changed
+
+-   Updated Core to v0.5.0
+-   Updated Psyshock to v0.5.0
+-   Updated Myri to v0.5.0
+
+## [0.4.5] – 2022-3-20
+
+Officially supports Entities [0.50.0]
+
+### Changed
+
+-   Updated Core to v0.4.5
+-   Updated Psyshock to v0.4.5
+-   Updated Myri to v0.4.5
+
+## [0.4.4] – 2022-3-13
+
+Officially supports Entities [0.17.0]
+
+### Changed
+
+-   Updated Myri to v0.4.4
+-   Added FAQ
+
+## [0.4.3] – 2022-2-21
+
+Officially supports Entities [0.17.0]
+
+### Changed
+
+-   Updated Core to v0.4.3
+-   Updated Myri to v0.4.3
+-   Added How-To Guides
+
+## [0.4.2] – 2021-10-5
+
+Officially supports Entities [0.17.0]
+
+### Changed
+
+-   Updated Core to v0.4.2
+
+## [0.4.1] – 2021-9-16
+
+Officially supports Entities [0.17.0]
+
+### Changed
+
+-   Updated Core to v0.4.1
+-   Updated Psyshock to v0.4.1
+-   Added Optimization Adventure 6
+
+## [0.4.0] – 2021-8-9
+
+Officially supports Entities [0.17.0]
+
+### Changed
+
+-   Updated Core to v0.4.0
+-   Updated Psyshock to v0.4.0
+-   Updated Myri to v0.4.0
+-   Updated Optimization Adventure Samples
+
+## [0.3.3] – 2021-6-19
+
+Officially supports Entities [0.17.0]
+
+### Changed
+
+-   Updated Myri to v0.3.3
+
 ## [0.3.2] – 2021-5-25
 
 Officially supports Entities [0.17.0]

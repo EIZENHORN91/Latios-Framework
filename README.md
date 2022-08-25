@@ -1,4 +1,4 @@
-# Latios Framework Packages for DOTS – [0.3.2]
+# Latios Framework Packages for DOTS – [0.5.6]
 
 The packages contained in this repository are packages built upon Unity DOTS
 which I use for my own personal hobbyist game development. All packages are
@@ -7,8 +7,14 @@ License](https://unity3d.com/legal/licenses/Unity_Companion_License). The
 packages may contain code borrowed from official Unity packages and therefore
 may be seen as derivative works.
 
-*[0.2.x] users, please read the* [*Upgrade
+The current version targets DOTS 0.50 and 0.51. If you are still using Entities
+0.17, please use the framework version 0.4.4 instead.
+
+*[0.4.x] users, please read the* [*Upgrade
 Guide*](Documentation~/Upgrade%20Guide.md)*!*
+
+**If you have any experience with DOTS, please take** [**this
+survey**](https://docs.google.com/forms/d/e/1FAIpQLSfxgFumJvhwjzi-r7L7rGssPoeSLXyV7BeCdCOsqfPWeWY_Ww/viewform?usp=sf_link)**!**
 
 ## Packages
 
@@ -18,8 +24,8 @@ Guide*](Documentation~/Upgrade%20Guide.md)*!*
     and Physics building blocks using an alternate runtime representation
 -   [Myri Audio](Documentation~/Myri%20Audio/README.md) – Simple, scalable,
     spatialized sounds and music streaming
--   Kinemation – Authored animation, simulated animation, and everything in
-    between (No public release)
+-   [Kinemation](Documentation~/Kinemation%20Animation%20and%20Rendering/README.md)
+    – Authored animation, simulated animation, and everything in between
 -   Mach-Axle AI – An infinite axis utility evaluator designed for high
     throughput (No public release)
 -   Life FX – VFX simulations which add immersion to stylized worlds (No public
@@ -28,12 +34,33 @@ Guide*](Documentation~/Upgrade%20Guide.md)*!*
 -   Networking (Name TBD) – Snapshots + input sim = unified, testable,
     inexpensive, and hardware-friendly networking (No public release)
 
+## Why Use the Latios Framework?
+
+Typically, “frameworks” fall into one of two categories. Either, they are
+someone’s collection of convenience classes and extension methods, or they
+define a specific architecture and workflow for describing gameplay code.
+
+While the Latios Framework has some of those things, its primary concerns are at
+the engine level. Many of its tools and solutions are inspired by GDC
+presentations, technical blogs, and research papers. A key focus of the
+framework is to make these advanced technologies usable within a DOTS-based
+production environment. For technical reasons, it is a “framework”, but it acts
+more like a toolkit and stays out of the way. A developer using it should always
+feel in control. If not, there’s likely an issue worth bringing to attention.
+
+0.5 marks the end of Phase II, where focus was placed on enabling technologies
+in DOTS such as audio and animation. Phase III will focus on gameplay
+technologies such as spatial and hierarchical queries and AI tools.
+
+Long term, the Latios Framework’s mission is to dramatically reduce the
+development effort required to make highly artistic 3D games and short films.
+
 ## Getting Started
 
 There are three methods to install the framework package (contains all publicly
 released packages).
 
--   Add package via PackageManager-\>Add package from git URL
+-   Add package via Package Manager -\> Add package from git URL
 -   Add via [OpenUPM](https://openupm.com/packages/com.latios.latiosframework/)
 -   Clone or submodule this repository into your project’s Packages folder
 
@@ -42,9 +69,49 @@ section [here](Documentation~/Core/Getting%20Started.md). You may also want to
 look through the [compatibility
 guide](Documentation~/Installation%20and%20Compatibility%20Guide.md).
 
-Getting Started pages and documentation are provided with each package.
+Getting Started pages and documentation are provided with each module.
+
+## Learning Resources
+
+-   Videos
+    -   [Intro Tour Video
+        Playlist](https://www.youtube.com/watch?v=UGKtIZOolEo&list=PLFME_M84NcPylGB41xAzh2bbbT8nhb_a0)
+-   Official How-To Guides
+    -   [How To Make an N – 1 Render
+        Loop](Documentation~/How-To%20Guides/How%20To%20Make%20an%20N%20-%201%20Render%20Loop.md)
+    -   [How To Spawn an Entity at a Position in a
+        Job](Documentation~/How-To%20Guides/How%20To%20Spawn%20an%20Entity%20at%20a%20Position%20in%20a%20Job.md)
+    -   [How To Make Parallel Deterministic
+        RNG](Documentation~/Core/Rng%20and%20RngToolkit.md)
+    -   [How To Find All Tagged Neighbors Within a
+        Radius](Documentation~/How-To%20Guides/How%20To%20Find%20All%20Tagged%20Neighbors%20Within%20a%20Radius.md)
+-   FAQ
+    -   [Can I use Core and Myri with Unity or Havok
+        Physics?](Documentation~/FAQ/FAQ%20-%20Can%20I%20Use%20Core%20and%20Myri%20with%20Unity%20or%20Havok%20Physics.md)
+    -   [How Do I Choose Between Hybrid, Shared, and Managed Components for My
+        Data?](Documentation~/FAQ/FAQ%20-%20Component%20Types.md)
+-   Optimization Adventures
+    -   [Find Pairs
+        1](Documentation~/Optimization%20Adventures/Part%201%20-%20Find%20Pairs%201.md)
+    -   [Build Collision Layer
+        1](Documentation~/Optimization%20Adventures/Part%202%20-%20Build%20Collision%20Layer%201.md)
+    -   [Space Sky
+        1](Documentation~/Optimization%20Adventures/Part%203%20-%20Space%20Sky%201.md)
+    -   [Command Buffers
+        1](Documentation~/Optimization%20Adventures/Part%204%20-%20Command%20Buffers%201.md)
+    -   [Find Pairs
+        2](Documentation~/Optimization%20Adventures/Part%205%20-%20Find%20Pairs%202.md)
+    -   [Collider Cast
+        1](Documentation~/Optimization%20Adventures/Part%206%20-%20ColliderCast%201.md)
+    -   [Frustum Culling
+        1](Documentation~/Optimization%20Adventures/Part%207%20-%20Frustum%20Culling%201.md)
 
 ## Proud Users of Latios Framework
+
+### Tools
+
+-   [DMotion](https://github.com/gamedev-pro/dmotion) – Open source animation
+    state machine powered by Kinemation
 
 ### Open Projects
 
@@ -52,82 +119,78 @@ Getting Started pages and documentation are provided with each package.
 
 ## Support
 
-I develop these packages separately from this repository. I will provide the
-current snapshot of that code upon request. I promise the code will be terrible.
+*TL;DR – I try to take issues and feedback as seriously as if this were a
+commercial project (or for the cynical, to shame commercial projects). Do not
+hesitate to reach out to me!*
+
+### Issues
+
+This is a hobby project and not my full-time job, so I cut corners and don’t
+spend a lot of time testing things. Sometimes I write code while an idea is in
+my head and just leave it there. Bugs will sneak in.
+
+However, **bugs are infuriating!**
+
+If you see a confusing error, send me a description of what you were doing and a
+stack trace with line numbers and the version you are using. You can use the
+GitHub issues, GitHub discussions, the DOTS forums, Unity PMs, or emails.
+Usually, I will find a bug fix locally, and provide instructions on how to apply
+the fix yourself. Then I will roll out the bug fix in my next release.
+
+For strange behavior that doesn’t trigger errors, a repro is the only way to
+guarantee the issue gets diagnosed, but a good description can go a long ways
+too.
+
+For performance issues, if you can’t send me a repro, send me a profile capture.
+It doesn’t matter if the issue makes your game unplayable or if you just want
+one task to be a couple hundred microseconds faster. I’m interested!
+
+### Feature Requests
+
+Please send feature requests, even if it is already listed on one of the
+near-term roadmaps. It helps me prioritize. Requests for small utility functions
+or other simple concerns can usually be squeezed in patch releases. I always
+reserve full discretion. Try to propose your use case, and focus less on a
+proposed solution.
+
+### Learning Resource Requests
+
+If you see gaps in the documentation, or are struggling to understand features,
+let me know. If you would like more demos and samples, also let me know what you
+would like an example of. I won’t build your game idea for you, but simple
+things I can try and squeeze in.
+
+### Derivatives, Collaboration, and Contribution
+
+I develop this framework separately from this repository. I will provide the
+current snapshot of that code upon request. I promise the code may be terrible.
 This may be useful to you if you desire to contribute in an area I am actively
 developing. See [Contributing](Documentation~/Contributing.md) for more
 information.
 
--   I will
-    -   Take bug reports on the latest release seriously.
-        -   If it is broken for you, it is broken for me.
-        -   I don’t spend time heavily testing this framework as it is a hobby
-            and not my full-time job. I probably will only notice issues when I
-            try to use something in a game jam or personal project and it
-            breaks, unless you alert me. With that said, nearly every feature in
-            this framework is at least partially tested in a production project.
-        -   Repros and test cases will increase the chances of me publishing a
-            fix quickly.
-    -   Consider optimization requests.
-        -   As long as Burst is in play, most people care more about features
-            than performance, so that’s usually my priority. However,
-            optimization is fun! So if you have a performance problem because of
-            my code, tell me! I will make it my problem to make it not a
-            problem.
-    -   Consider documentation and example requests.
-        -   XML docs
-        -   Markdown docs
-        -   Examples highlighting a specific feature that is difficult to
-            understand
-    -   Consider collaboration requests.
-        -   If you are an asset developer (free or paid) and would like to
-            officially support this framework, don’t be shy to reach out to me.
-        -   If you are working on a game and wish to use my framework, but need
-            help integrating it into your project and utilizing its features,
-            don’t be shy! I’m pretty easy to reach on the Unity forums.
-    -   Consider API suggestions.
-        -   API design is a fascinating topic for me. My general philosophy is
-            that a competent developer should spend significantly more time
-            understanding the problem he/she is solving compared to
-            understanding the API he/she is using.
-        -   While I spend a great amount of time thinking about API, I am not
-            perfect. If you have comments regarding an improvement, naming,
-            structure, or anything, tell me. If I agree with a proposed change,
-            I will try my best to integrate it.
-    -   Consider minor feature requests.
-        -   As long as it makes sense in the package, I will add it.
-    -   Consider package or major feature proposals.
-        -   Please put some thought and design into the proposal.
-        -   Please recognize that I do this as a hobby and any time spent on a
-            proposed feature is time I am not spending on already planned
-            features. I make that call.
-        -   Please recognize that I have my personal style and preferences in
-            game design which are different than yours.
-        -   If you are developing a package and would like me to help maintain
-            and distribute it, I will gladly welcome your work to the framework
-            family. Of course it will have to meet API standards, but I can help
-            you with that.
-        -   By far the best way to get me to work on a new package or major
-            feature is to collab with me in a game jam project where such work
-            is required. I’m almost always looking for new collab opportunities!
-    -   Consider prioritizing planned features upon request.
-        -   If one of the features on my near-term roadmap is a feature you
-            desire, let me know, and I can prioritize it and cut you a release
-            when it is ready.
--   I will not
-    -   Support older versions of packages outside of answering questions and
-        assisting in updating to the latest versions.
-    -   Guarantee your project does not break when updating.
-        -   I know it is good practice to obsolete things and use
-            [FormerlySerializedAs] and provide API updaters. I just don’t care
-            enough to bother.
-        -   I will integrate pull requests which help with this. So if you want
-            to be the nice human being that ensures projects update smoothly and
-            know how to write the code to do it, I will gladly accept your
-            contributions.
-    -   Pull pull requests directly.
-        -   See the [Contributing](Documentation~/Contributing.md) page for
-            details about my workflow.
+Because I often validate changes manually, I usually won’t merge pull requests.
+I’m working on a new workflow that will preserve contributor commits in the
+history. But if I run into issues, I will always prioritize getting changes into
+releases.
+
+If you are developing your own packages on top of this framework, commercial or
+open source, feel free to reach out to me for suggestions, guidance, or to
+establish your stake in the areas that concern you. It is important to me that
+such dependent technologies are successful. For open source projects, I may even
+send a pull request.
+
+### Feature Releases and Compatibility
+
+I do not promise backwards compatibility between feature releases (0.X). I will
+have upgrade guides detailing all the breakages and what to change. But it will
+be a manual process.
+
+Patch releases (0.5.X) will always preserve backwards compatibility back to the
+last feature release.
+
+While I will provide tips and suggestions if you use older releases, I will not
+publish patch releases for older versions. (There might be an exception to this
+rule during the transition to DOTS 1.0, but that is TBD.)
 
 ## A Word of Caution
 

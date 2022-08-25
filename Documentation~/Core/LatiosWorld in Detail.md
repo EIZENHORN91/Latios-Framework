@@ -19,6 +19,12 @@ constructor:
 -   LatiosSimulationSystemGroup – subclasses `SimulationSystemGroup`
 -   LatiosPresentationSystemGroup – subclasses `PresentationSystemGroup`
 
+For NetCode projects, it instead creates the appropriate Client and Server
+variants. This is dictated by the `WorldRole` argument in the `LatiosWorld`
+constructor.
+
+These systems have slightly modified behavior to support additional features.
+
 ## System Creation in LatiosInitializationSystemGroup
 
 The `LatiosInitializationSystemGroup` is the home to all Latios.Core systems.
@@ -31,16 +37,9 @@ The following systems are created by the `LatiosInitializationSystemGroup`:
 -   [SyncPointPlaybackSystem](Custom%20Command%20Buffers%20and%20SyncPointPlaybackSystem.md)
     – This is a system capable of playing back command buffers which perform ECS
     structural changes
--   [SceneManagerSystem](Scene%20Management.md) – Triggers scene changes
 -   [MergeBlackboardsSystem](Blackboard%20Entities.md) – Merges
     `BlackboardEntityData` entities into the `sceneBlackboardEntity` and
     `worldBlackboardEntity`
--   [DestroyEntitiesOnSceneChangeSystem](Scene%20Management.md) – Destroys all
-    entities whenever the scene changes
-    -   This system does not use a normal `OnUpdate()` method and may not show
-        up in the Unity Editor
-    -   This system creates a new `sceneBlackboardEntity` instance after it
-        destroys the old one
 -   [ManagedComponentsReactiveSystemGroup](Collection%20and%20Managed%20Struct%20Components.md)
     – This is a `RootSuperSystem` that creates multiple concrete instances of
     generic systems to react to each `IManagedComponent` and
@@ -65,13 +64,13 @@ The following systems are created by the `LatiosInitializationSystemGroup`:
 Currently, the `LatiosInitializationSystemGroup` orders itself as follows:
 
 -   PreSyncPointGroup
--   BeginInitializationEntityCommandBufferSystem
 -   SyncPointPlaybackSystem
--   SceneManagerSystem
+-   BeginInitializationEntityCommandBufferSystem
+-   SceneManagerSystem (if installed)
 -   [End OrderFirst region]
 -   …
--   [Unity SceneSystemGroup]
--   LatiosWorldSyncSystem
+-   [Unity SceneSystemGroup or ConvertToEntitySystem, whichever is latter]
+-   LatiosWorldSyncGroup
     -   MergeBlackboardsSystem
     -   ManagedComponentReactiveSystemGroup
     -   [End OrderFirst region]
@@ -86,14 +85,18 @@ imply, these objects store the collection components and managed struct
 components that can be attached to entities. `CollectionComponentStorage` also
 stores the `JobHandle`s and allocation flags with each collection component.
 
-Second, it creates a cache of the collection component dependencies pending
+Second, it scans the list of unmanaged systems and generates generic classes for
+`ISystemShouldUpdate` and `ISystemNewScene`. It also creates an unmanaged system
+providing access to the blackboard entities from a Burst `ISystem`.
+
+Third, it creates a cache of the collection component dependencies pending
 update of an executing `SubSystem.Dependency`’s final value.
 
-Third, it injects generic types used by the reactive systems which track
+Fourth, it injects generic types used by the reactive systems which track
 collection and managed struct components into the `TypeManager` so that Unity’s
 ECS recognizes them.
 
-Fourth, it creates `sceneBlackboardEntity` and `worldBlackboardEntity`.
+Fifth, it creates `worldBlackboardEntity`.
 
 Finally, it creates the `LatiosInitializationSystemGroup`, the
 `LatiosSimulationSystemGroup`, and the `LatiosPresentationSystemGroup` which are
@@ -101,12 +104,13 @@ subclasses of primary groups created by a non-`LatiosWorld`.
 
 The `LatiosWorld` contains a couple of flags used for stopping and restarting
 simulations of systems on scene changes. The `LatiosSimulationSystemGroup` and
-`LatiosPresentationSystemGroup` simply check one of these flags in `OnUpdate()`
-and conditionally execute the `base.OnUpdate()`. Otherwise, they are identical
-to `SimulationSystemGroup` and `PresentationSystemGroup` in functionality and
-behavior.
+`LatiosPresentationSystemGroup` check one of these flags in `OnUpdate()` and
+conditionally execute the `base.OnUpdate()`. This behavior is only used when the
+Scene Manager is installed. Otherwise, the `sceneBlackboardEntity` is created on
+the first run of `LatiosInitializeSystemGroup`.
 
 The `LatiosWorld` also contains the public `useExplicitSystemOrdering` flag
 which tells `SuperSystem`s if they should enable system sorting by default. This
 is used by the bootstrap templates to set the appropriate workflow. However, a
-`SuperSystem` may override this setting for itself in `CreateSystems()`.
+`SuperSystem` may override this setting for itself in `CreateSystems()` by
+setting the `EnableSystemSorting` flag.

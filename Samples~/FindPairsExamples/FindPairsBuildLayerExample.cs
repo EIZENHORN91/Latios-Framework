@@ -8,7 +8,7 @@ using Unity.Mathematics;
 namespace Dragons
 {
     [AlwaysUpdateSystem, DisableAutoCreation]
-    public class FindPairsBuildLayerExample : SubSystem
+    public partial class FindPairsBuildLayerExample : SubSystem
     {
         private EntityQuery m_query;
         protected override void OnCreate()
@@ -18,6 +18,8 @@ namespace Dragons
 
         public override bool ShouldUpdateSystem()
         {
+            if (!worldBlackboardEntity.HasComponent<CurrentScene>())
+                return UnityEngine.SceneManagement.SceneManager.GetActiveScene().name.Equals("FindPairsBuildLayerExample");
             var currentScene = worldBlackboardEntity.GetComponentData<CurrentScene>();
             return currentScene.current.Equals("FindPairsBuildLayerExample");
         }

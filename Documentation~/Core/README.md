@@ -16,8 +16,14 @@ class is here for!
 
 -   Inject systems based on namespaces
 -   Build partial hierarchies
--   Build a playerloop with custom preset loops (like one with classical
-    FixedUpdate or one with Rendering before Simulation)
+-   Build a `playerloop` with custom preset loops (like one with classical
+    `FixedUpdate` or one with Rendering before Simulation)
+
+Also, there’s an `ICustomConversionBootstrap` interface which allows you to
+customize conversion worlds. Do you want Psyshock to convert colliders, or are
+you using Unity Physics exclusively? Should the Hybrid Renderer convert skinned
+meshes, or should Kinemation? It used to be a pain to implement these decisions.
+But now you have full control!
 
 See more: [Customizing the Bootstraps](Customizing%20the%20Bootstraps.md)
 
@@ -41,24 +47,25 @@ See more: [Super Systems](Super%20Systems.md)
 
 Ever want to copy a component from one Entity to another using its
 `ComponentType`, perhaps obtained by comparing two entities’ archetypes? I did,
-so I wrote this. It currently uses cached evil reflection hacking magic to
-invade the ECS internals, but this will be converted into Burst-friendly
-mechanisms in the future.
+so I wrote this. It uses asmref internal access hacks to implement the features
+not possible by the public API (Shared Components).
 
 ### Conditional System Updates
 
-Unity does this thing where it tries to look at your EntityQueries and decide if
-your system should update or not. While it’s certainly cute that Unity cares
+Unity does this thing where it tries to look at your Entity Queries and decide
+if your system should update or not. While it’s certainly cute that Unity cares
 about performance, you as the programmer can make much better decisions. Turn
 off Unity’s logic with the `[AlwaysUpdateSystem]` attribute and turn on your own
-by overriding `ShouldUpdateSystem()`.
+by overriding `ShouldUpdateSystem()` on a `SubSystem` (`SystemBase`) or
+`ISystemShouldUpdate` (for `ISystem`).
 
 You can also use both mechanisms if Unity’s logic is not interfering but you
 also want to further constrain the system to a specific scene or something. I do
 this a lot.
 
 You can also apply this logic to a `SuperSystem` (`ComponentSystemGroup`) to
-enable or disable an entire group of systems.
+enable or disable an entire group of systems. This can help improve main thread
+performance.
 
 See more: [Super Systems](Super%20Systems.md)
 
@@ -94,7 +101,12 @@ do cool stuff like instantiate a new settings override from a prefab.
 
 Regardless of whether you use the authoring tools, feel free to dump components
 onto these entities. The `SceneManagerSystem `and Myri’s `AudioSystem `use the
-`worldBlackboardEntity` to expose status and settings.
+`worldBlackboardEntity` to expose status and settings. And Kinemation uses it
+heavily for internal communication and for exposing camera culling parameters to
+the custom culling API.
+
+Blackboard entities can be accessed as properties of `LatiosWorld`, `SubSystem`,
+and `SuperSystem`, or via the `SystemState` extension methods.
 
 See more: [Blackboard Entities](Blackboard%20Entities.md)
 
@@ -127,6 +139,10 @@ scenes use ECS is totally a thing you can do, especially since you can check
 `CurrentScene` inside `ShouldUpdateSystem`. For all you out there trying to
 shoehorn ECS into your Mono game, shoehorn no more!
 
+*This feature is no longer enabled by default for any bootstrap except the
+DreamingBootstrap. It is also not compatible with NetCode and may require tweaks
+to work correctly with systems that rely on singletons, such as Unity Physics.*
+
 See more: [Scene Management](Scene%20Management.md)
 
 ### Collection Components
@@ -154,17 +170,15 @@ in the `ManagedComponentReactiveSystemGroup` which runs in
 The typical way to iterate through these collection components is to use
 
 ```csharp
-
 Entities.WithAll\<{AssociatedComponentType}\>().ForEach((Entity)
 =\>{}).WithoutBurst().Run();
-
 ```
 
 You can then access the collection component using the `EntityManager`
 extensions.
 
 Collection components have this nice feature of automatically updating their
-dependencies if you use them in a `SubSystem` (`SystemBase`).
+dependencies if you use them in a `SubSystem`.
 
 See more: [Collection and Managed Struct
 Components](Collection%20and%20Managed%20Struct%20Components.md)
@@ -219,6 +233,10 @@ or readwrite), the weak request will be ignored.
 
 There are similar mechanisms for handling “Any” requests and “Exclude” requests.
 
+You begin a Fluent chain using the `Fluent` property on `SubSystem` and
+`SuperSystem` or by invoking `Fluent()` on an `EntityManager` or `SystemState`.
+To get the resulting `EntityQuery`, call `Build()`.
+
 See more: [Fluent Queries](Fluent%20Queries.md)
 
 ### Smart Sync Point and Custom Command Buffers
@@ -252,14 +270,123 @@ can fetch this using `latiosWorld.SyncPoint` and skip caching it in
 you are done. All that boilerplate is gone. As the title says, this sync point
 is smart!
 
+You can also manually play back these buffers manually, including in a Burst
+`ISystem`.
+
 See more: [Custom Command Buffers and
 SyncPointPlaybackSystem](Custom%20Command%20Buffers%20and%20SyncPointPlaybackSystem.md)
 
+### Rng and RngToolkit
+
+There are three common strategies for using random numbers in DOTS ECS. The
+first is to store the `Random` instance in a singleton, which prevents
+multithreading. The second is to store several `Random` instances in an array
+and access them using `[NativeThreadIndex]` which breaks determinism. The third
+is to store a `Random` instance on every entity which requires an intelligent
+seeding strategy and consumes memory bandwidth.
+
+There’s a way better way!
+
+`Rng` is a new type which provides deterministic, parallel, low bandwidth random
+numbers to your jobs. Simply call `Shuffle()` before passing it into a job, then
+access a unique sequence of random numbers using `GetSequence()` and passing in
+a unique integer (`chunkIndex`, `entityInQueryIndex`, ect). The returned
+sequence object can be used just like `Random` for the remainder of the job. You
+don’t even need to assign the state back to anything.
+
+`Rng` is based on the Noise-Based RNG presented in [this GDC
+Talk](https://www.youtube.com/watch?v=LWFzPP8ZbdU) but updated to a more
+recently shared version:
+[SquirrelNoise5](https://twitter.com/SquirrelTweets/status/1421251894274625536)
+
+However, if you would like to use your own random number generation algorithm,
+you can use the `RngToolkit` to help convert your `uint` outputs into more
+desirable forms.
+
+See more: [Rng and RngToolkit](Rng%20and%20RngToolkit.md)
+
+### EntityWith\<T\> and EntityWithBuffer\<T\>
+
+Have you ever found an `Entity` reference in a component and wondered what you
+are supposed to do with it? Do you instantiate it? Do you manipulate it? Do you
+read from it? Maybe the name might give you a clue, but we all know naming
+things is hard.
+
+So instead, use `EntityWith<T>` and `EntityWithBuffer<T>` instead! They work
+just like normal `Entity` references, except you can gather additional context
+about them. An `EntityWith<Prefab>` should probably be instantiated. An
+`EntityWith<Disabled>` needs to be enabled at the right moment. An
+`EntityWith<LocalToWorld>` is a transform to spawn things at or attach things
+to.
+
+These new types also come with some syntax sugar methods which may make some
+complex code a little more compact and readable.
+
+### Smart Blobbers
+
+Blob Asset Conversion is tough to get right, especially if you want to use the
+more scalable `BlobAssetComputationContext` and generate blobs in parallel. In
+addition, what if multiple authoring `MonoBehaviours` want access to these blobs
+to store in custom components? Do they build the blobs themselves and risk doing
+it wrong?
+
+Smart Blobbers solve this problem and make blob asset conversion painless, even
+for large projects with complex conversion dependencies. They provide a built-in
+mechanism for other authoring logic to request blobs to be converted. Those
+requests can later be resolved into real `BlobAssetReference<>` values. Smart
+Blobbers are strategically placed in the conversion pipeline to make this
+process easy and intuitive.
+
+If you need to define your own Blob Asset Conversion, you can subclass one of
+the two `SmartBlobberConversionSystem` types. The classes explicitly define
+their requirements through abstract functions and interface constraints. And all
+the pieces you are expected to interact with are thoroughly documented via XML
+documentation. You get fully parallel (and Bursted if using runtime conversion)
+blob asset generation without having to worry about Unity’s convoluted blob
+asset conversion APIs.
+
+See more: [Smart Blobbers](Smart%20Blobbers.md)
+
+### UnsafeParallelBlockList
+
+This container is really unsafe. It was originally only meant for internal
+purposes. But here it is on this page. Why?
+
+It is fast! Really fast!
+
+So fast that people were finding ways to use it anyways, whether that be copying
+the code or modifying the package. Now it is public API so people don’t have to
+do those workarounds anymore.
+
+Just be warned. It really truly is a gun eager to put a bullet through your
+foot.
+
+### Better Transforms
+
+While building Kinemation, I found a whole bunch of bugs and issues with Unity’s
+transform systems, specifically with how they handle the hierarchy and hierarchy
+updates. So I fixed them.
+
+Improved Transforms is superior in pretty much every way. It resolves bugs with
+Disabled components and prefabs. It has better and more deterministic change
+filtering. And it uses a lazier algorithm for fetching matrices which in the
+worst case still outperforms Unity’s solution by 4%. It is installed by default
+in most bootstraps.
+
+Extreme Transforms is designed for extreme amounts of entities. It uses a
+breadth-first chunk iteration technique for the first 16 depth levels which
+better leverages L2 and L3 and the hardware prefetchers. However, it has a
+sizeable main-thread penalty and struggles when the majority of entity
+hierarchies undergo a structural change each frame. If you have large worker
+thread times for updating the hierarchy transforms, try this out and see if it
+wins you back a few milliseconds.
+
+Both Improved and Extreme Transforms replace `ParentSystem` and run fully in
+Burst. This usually cuts the `ParentSystem` runtime in half during frames where
+hierarchies are instantiated.
+
 ## Known Issues
 
--   This package does not work with Project Tiny. There are a few issues I need
-    to address and I will likely expose a separate Tiny version of the
-    framework.
 -   There’s a limit to how many generic components you can add at runtime before
     everything explodes. If you want to expand that limit, write a T4 script to
     generate hundreds of non-generic `IComponentData` types. Your compiler will
@@ -272,40 +399,41 @@ SyncPointPlaybackSystem](Custom%20Command%20Buffers%20and%20SyncPointPlaybackSys
 -   `IManagedComponent` and `ICollectionComponent` do not save in subscenes.
 -   `InstantiateCommandBuffer` types do not return a remappable entity when
     creating a command.
--   `SyncPointPlaybackSystem` uses `Allocator.Persistent` instead of the
-    `DisposeSentinel` hack that allows `EntityCommandBufferSystem` to use
-    `Allocator.TempJob`.
--   Unmanaged systems are not supported when added directly to a non-user
-    `ComponentSystemGroup`. Create a custom `ComponentSystemGroup` as an
-    injection point as a workaround.
--   System sorting does not occur automatically for non-user
-    `ComponentSystemGroup`s after initialization. Call `SortSystems()`
-    explicitly for these groups.
+-   `SyncPointPlaybackSystem` uses `Allocator.Persistent` instead of
+    `World.UpdateAllocator`.
+-   Unmanaged systems do not support automatic dependency management features,
+    due to them being unable to receive an external `NativeContainer` while in
+    Burst.
+-   `ISystemShouldUpdate` and `ISystemNewScene` do not work correctly with
+    `SystemState` lambdas.
+-   Automatic dependency management for `latiosWorld.SyncPoint` and collection
+    components do not function correctly when used inside `OnStartRunning()` or
+    `OnStopRunning()`. This is due to a bug in `SystemBase` which assumes no
+    exceptions occur inside these methods.
+-   Custom containers do not yet support custom allocators.
+-   Compile errors are generated when using .Net Framework. Use .Net Standard.
+-   IL2CPP only works in builds in Unity 2021 LTS and requires the IL2CPP Code
+    Generation to use the “Faster (smaller) builds” option.
 
 ## Near-Term Roadmap
 
+-   Local Allocator
+    -   Custom allocator with a per-element of loop scope
+-   Automatic `ConverterVersion` bumping on code changes
 -   Gameplay Toolkit
     -   Reduce cognitive overhead of DOTS for gameplay programmers
-    -   Entity component references and Entity buffer element references
     -   Hierarchy navigation and modification
-    -   Type handle dependency resolver
     -   A/B systems
 -   More custom command buffer types
 -   Codegen generic components
--   Optimized transform hierarchy types and systems
-    -   Static parents
-    -   Partially static hierarchies
-    -   Faster hierarchy updates
--   World configuration settings
 -   Improved collection components
     -   Default initialization interface
-    -   Dependency backup/restore for Entities.ForEach
+    -   Dependency backup/restore for `Entities.ForEach`
     -   Get as ref
     -   Conversion and serialization
 -   Profiling tools
     -   Port and cleanup from Lsss
--   Reflection-free refactor
-    -   For Tiny support
+-   Reflection-free improvements
 -   Job-friendly safe blob management
 -   Custom Lambda Code-gen
     -   If I am feeling really, really brave…

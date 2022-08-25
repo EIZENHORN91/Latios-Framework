@@ -2,12 +2,20 @@
 
 Myri Audio is a pure DOTS audio solution designed for handling a myriad of audio
 sources. It leverages the C\# job system, the Burst compiler, and the DSPGraph.
-At the time of its release initial release (when this page was written), no
-official Unity Entities-based audio solution existed.
+At the time of its initial release (when this page was written), no official
+Unity Entities-based audio solution existed.
 
 Check out the [Getting Started](Getting%20Started.md) page!
 
 ## Features
+
+### Out-of-the-Box
+
+Myri can play audio without requiring a single line of code. Simply add Myri
+Audio Source components to your GameObjects and a Myri Audio Listener Authoring
+to your camera transform and you are good to go. A brickwall limiter is applied
+to the final audio result so your audio can remain distortion-free no matter how
+chaotic your scene is.
 
 ### Spatialization
 
@@ -80,20 +88,33 @@ were hoping for, well I’m glad I delivered.
     audio framerate is faster than the simulation framerate. A configurable
     audio framerate multiplier exists to combat this, but issues may still arise
     during frame spikes.
--   A job which manages listeners and the DSP graph is not Bursted due to
-    DSPGraph limitations.
 -   Myri will only use up to `n` worker threads when performing sampling, where
     `n` is the sum of spatialization channels across all listeners. A default
     listener has four spatialization channels.
+
+## Known Unity Engine and DSPGraph Issues
+
+The following issues are issues with Unity’s underlying DSPGraph and cannot be
+resolved in Myri. If you encounter one of these issues, submit a bug report to
+Unity!
+
+-   Background subscene conversion may fail to properly convert audio sources as
+    it fails to read the AudioClip files.
+-   Sometimes in the editor, audio may stutter despite a lack of warnings of the
+    DSPGraph being starved. This is because GC spikes stall the audio thread on
+    some versions of Unity. (It is not due to Myri. I checked.)
+-   A job which manages listeners and the DSP graph is not Bursted due to
+    DSPGraph limitations.
 -   The Unity Editor sometimes emits an exception from a Bursted job. This is a
     DSPGraph and job system bug related to scheduling, and does not appear to
     have any adverse effects currently.
 -   Exiting play mode while an active listener exists will cause a warning
     regarding DSPGraph nodes not being disposed. This is an execution order
     issue on teardown.
--   Myri does not properly handle peaks in audio where the samples mixed become
-    greater than 1.0f. A proper limiter would likely solve this, but I’m not an
-    audio engineer, and so this is one of the areas I need help.
+-   Audio causes crashes for MacOS builds using 2020.1.9f1 and possibly other
+    versions. (1 report)
+-   DSPGraph does not initialize correctly on 2020.3 using the new build system
+    packages for Windows. (1 report)
 
 ## Near-Term Roadmap
 

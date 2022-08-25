@@ -6,6 +6,233 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic
 Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [0.5.6] – 2022-8-21
+
+Officially supports Entities [0.50.1] – [0.51.1]
+
+### Added
+
+-   Added `ObjectAuthoringExtensions.DestroyDuringConversion()` to facilitate
+    destroying temporary `UnityEngine.Objects` during conversion that works in
+    Editor Mode, Play Mode, and Runtime.
+
+## [0.5.5] – 2022-8-14
+
+Officially supports Entities [0.50.1] – [0.51.1]
+
+### Fixed
+
+-   Fixed Extreme Transforms crashing on startup in builds
+
+## [0.5.2] – 2022-7-3
+
+Officially supports Entities [0.50.1]
+
+### Fixed
+
+-   Fixed Smart Blobbers hiding exception stack traces
+
+## [0.5.1] – 2022-6-19
+
+Officially supports Entities [0.50.1]
+
+### Added
+
+-   Added
+    `CustomConversionSettings.OnPostCreateConversionWorldEventWrapper.OnPostCreateConversionWorld`
+    which can be used to post-process the conversion world after all systems are
+    created
+
+### Fixed
+
+-   Applied the Entities 0.51 `ParentSystem` bugfix to `ImprovedParentSystem`
+    and `ExtremeParentSystem`
+-   Made the `Child` buffer order deterministic for `ImprovedParentSystem` and
+    `ExtremeParentSystem`
+
+## [0.5.0] – 2022-6-13
+
+Officially supports Entities [0.50.1]
+
+### Added
+
+-   *New Feature:* Added experimental NetCode support
+-   *New Feature:* Added Smart Blobbers which provide a significantly better
+    workflow for Blob Asset conversion
+-   *New Feature:* Added `ICustomConversionBootstrap` which allows modifying the
+    setup of a conversion world similar to `ICustomBootstrap`
+-   *New Feature:* Added Improved Transforms and Extreme Transforms which
+    provide faster and more bug-free transform system replacements while still
+    preserving the user API
+-   Added new bootstraps and templates
+-   Exposed `UnsafeParallelBlockList` which is a fast container that can be
+    written to in parallel
+-   Added `[NoGroupInjection]` attribute to prevent a system from being injected
+    in a default group
+-   Added `CoreBootstrap` which provides installers for Scene Management and the
+    new Transform systems
+-   Added chunk component options to Fluent queries
+-   Added Fluent method `WithDelegate()` which allows using a custom delegate in
+    a Fluent query rather than an extension method
+-   Added `LatiosWorld.ForceCreateNewSceneBlackboardEntityAndCallOnNewScene()`
+    which provides an alternative to use that functionality without Scene
+    Manager installed
+-   Added `LatiosMath.RotateExtents()` overload that uses a scalar `float` for
+    `extents`
+-   Added `BlobBuilderArray.ConstructFromNativeArray<T>()` overload which uses
+    raw pointer and length as arguments
+-   Added `GetLength()` extension for Blob Assets
+
+### Changed
+
+-   Scene Manager is no longer automatically created by
+    `LatiosInitializationSystemGroup` and instead has a dedicated installer
+-   All systems inject into the base `InitializationSystemGroup` instead of the
+    Latios-prefixed version
+-   The ordering of systems in `InitializationSystemGroup` relative to Unity
+    systems have been altered
+
+### Fixed
+
+-   Added missing `readOnly` argument to `BlackboardEntity.GetBuffer()`
+-   Removed GC allocations in `EntityManager` Collection Component and Managed
+    Struct Component implementations
+-   Fixed a bug where `SuperSystem` was consuming exceptions incorrectly and
+    hiding stack traces
+-   Added missing namespace to StringBuilderExtensions
+
+### Improved
+
+-   Added significantly more XML documentation
+-   `InstantiateCommandBuffer` can now have up to 15 tags added incrementally
+
+### Removed
+
+-   Removed `[BurstPatcher]` and `[IgnoreBurstPatcher]` attributes
+
+## [0.4.5] – 2022-3-20
+
+Officially supports Entities [0.50.0]
+
+### Added
+
+-   Added `Fluent()` extension method for `SystemState` for use of Fluent in
+    `ISystem`.
+-   Added `ISystemNewScene` and `ISystemShouldUpdate` which provides additional
+    callbacks for `ISystem` matching that of `SubSystem` and `SuperSystem`.
+-   Added `GetWorldBlackboardEntity()` and `GetSceneBlackboardEntity()`
+    extension methods for `SystemState` which are compatible with Burst.
+-   Added `SortingSystemTracker` which can detect systems added or removed from
+    a `ComponentSystemGroup`.
+-   Added `CopyComponentData()` and `CopyDynamicBuffer()` extension methods for
+    `EntityManager` which are compatible with Burst.
+-   Added `CopySharedComponent()` extension method for `EntityManager`.
+-   Added `GetSystemEnumerator()` extension method for `ComponentSystemGroup`
+    which can step through all managed and unmanaged systems in update order.
+-   Added `ExecutingSystemHandle()` extension method for `WorldUnmanaged` which
+    returns a handle to the system currently in its `OnUpdate()` routine. This
+    is compatible with Burst.
+-   Added `AsManagedSystem()` extension method for `World` and `WorldUnmanaged`
+    which extract the class reference of a managed system from a
+    `SystemHandleUntyped`.
+-   Added `GetAllSystemStates()` extension method for `WorldUnmanaged` which can
+    gather all `SystemState` instances and consequently all systems in a World
+    including unmanaged systems.
+-   Added `WorldExposedExtensions.GetMetaIdForType()` which can generate an ID
+    for a `System.Type` which can be compared against
+    `SystemState.UnmanagedMetaIndex`.
+
+### Changed
+
+-   `BootstrapTools.InjectSystem` can now inject unmanaged systems. Many other
+    `BootstrapTools` functions now handle unmanaged systems too.
+
+### Fixed
+
+-   Fixed an issue where custom command buffers could not be played back from
+    within a Burst context.
+-   All custom `ComponentSystemGroup` types including `SuperSystem` and
+    `RootSuperSystem` support unmanaged systems.
+-   All custom `ComponentSystemGroup` types including `SuperSystem` and
+    `RootSuperSystem` support `IRateManager`.
+-   All custom `ComponentSystemGroup` types including `SuperSystem` and
+    `RootSuperSystem` support automatic system sorting when systems are added
+    and removed.
+-   Fixed an issue where the managed and collection component reactive systems
+    were being stripped in builds.
+-   Fixed an issue with `EntityDataCopyKit` not handling default-valued shared
+    components correctly.
+
+### Improved
+
+-   `EntityDataCopyKit` no longer uses reflection.
+-   All custom `ComponentSystemGroup` types including `SuperSystem` and
+    `RootSuperSystem` behave much more like Unity’s systems regarding error
+    handling.
+
+## [0.4.3] – 2022-2-21
+
+Officially supports Entities [0.17.0]
+
+### Fixed
+
+-   Fixed GC allocations caused by using a foreach on `IReadOnlyList` type
+-   Removed a reference to the Input System package in Latios.Core.asmdef
+
+## [0.4.2] – 2021-10-5
+
+Officially supports Entities [0.17.0]
+
+### Added
+
+-   Added `flags` parameter to `LatiosWorld` constructor which is required for
+    NetCode projects.
+
+### Improved
+
+-   Improved the error message for when a `SubSystem` begins its `OnUpdate()`
+    procedure but the previous `SubSystem` did not clean up the automatic
+    dependency stack. The error now identifies both systems and suggests the
+    more likely cause being an exception in the previous `SubSystem`.
+
+## [0.4.1] – 2021-9-16
+
+Officially supports Entities [0.17.0]
+
+### Added
+
+-   Added `simd.length()`.
+-   Added `simd.select()` which allows for selecting the x, y, and z components
+    using separate masks.
+-   Added `simd.cminxyz()` and `cmaxxyz()` which computes the min/max between x,
+    y, and z for each of the four float3 values.
+-   Added `simd.abs()`.
+-   Added `simd.project()`.
+-   Added `simd.isfiniteallxyz()` which returns true for each float3 if the x,
+    y, and z components are all finite values.
+
+## [0.4.0] – 2021-8-9
+
+Officially supports Entities [0.17.0]
+
+### Added
+
+-   Added argument `isInitialized` to
+    `BlackboardEntity.AddCollectionComponent()`
+-   *New Feature:* Added `OnNewScene()` callback to `SubSystem` and
+    `SuperSystem`, which can be used to initialize components on the
+    `sceneBlackboardEntity`.
+-   *New Feature:* Added `EntityWith<T>` and `EntityWithBuffer<T>` for strongly
+    typed entity references and left-to-right dereferencing chains.
+-   Added `LatiosMath.ComplexMul()`.
+-   *New Feature:* Added `Rng` and `RngToolkit` which provide a new framework
+    for fast, deterministic, parallel random number generation.
+
+### Improved
+
+-   Added safety checks for improper usage of `sceneBlackboardEntity` that would
+    only cause issues in builds.
+
 ## [0.3.1] – 2021-3-7
 
 Officially supports Entities [0.17.0]
@@ -33,23 +260,23 @@ Officially supports Entities [0.17.0]
     systems run. Not all entities have been gathered when `OnUpdate()` is
     called. Note that this mechanism is likely temporary and may change after a
     Unity bug is fixed.
--   `New Feature: Added the following containers: EnableCommandBuffer,
-    DisableCommandBuffer, DestroyCommandBuffer, InstantiateCommandBuffer,
-    EntityOperationCommandBuffer`
--   `New Feature: Added SyncPointPlaybackSystem which can play back
-    EntityCommandBuffers as well as the new command buffer types`
--   `New Feature: Added LatiosWorld.syncPoint which provides fast access to the
-    SyncPointPlaybackSystem and removes the need to call
-    AddJobHandleForProducer() when invoked from a SubSystem`
--   `Added BlackboardEntity.AddComponentDataIfMissing<T>(T data) which systems
-    can use to default-initialize worldBlackboardEntity components in OnCreate()
-    without overriding custom settings`
--   `Added PreSyncPointGroup for scheduling non-ECS jobs to execute on worker
-    threads during the sync point`
--   `Added extension BlobBuilder.ConstructFromNativeArray<T>() which allows
-    initializing a BlobArray<T> from a NativeArray<T>`
--   `Added extension BlobBuilder.AllocateFixedString<T>() which allows
-    initializing a BlobString from a FixedString### or HeapString` inside a
+-   *New Feature:* Added the following containers: `EnableCommandBuffer`,
+    `DisableCommandBuffer`, `DestroyCommandBuffer`, `InstantiateCommandBuffer`,
+    `EntityOperationCommandBuffer`
+-   *New Feature:* Added `SyncPointPlaybackSystem` which can play back
+    `EntityCommandBuffers` as well as the new command buffer types
+-   *New Feature:* Added `LatiosWorld.syncPoint` which provides fast access to
+    the `SyncPointPlaybackSystem` and removes the need to call
+    `AddJobHandleForProducer()` when invoked from a `SubSystem`
+-   Added `BlackboardEntity.AddComponentDataIfMissing<T>(T data)` which systems
+    can use to default-initialize `worldBlackboardEntity` components in
+    `OnCreate()` without overriding custom settings
+-   Added `PreSyncPointGroup` for scheduling non-ECS jobs to execute on worker
+    threads during the sync point
+-   Added extension `BlobBuilder.ConstructFromNativeArray<T>()` which allows
+    initializing a `BlobArray<T>` from a `NativeArray<T>`
+-   Added extension `BlobBuilder.AllocateFixedString<T>()` which allows
+    initializing a `BlobString` from a `FixedString###` or `HeapString` inside a
     Burst job
 -   Added extension `NativeList<T>.AddRangeFromBlob()` which appends the
     `BlobArray` data to the list

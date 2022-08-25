@@ -1,6 +1,6 @@
 # Getting Started with Myri Audio
 
-This is the first preview version released publicly. It currently supports
+This is the second preview version released publicly. It currently supports
 simple use cases appropriate for game jams, experiments, and maybe even some
 commercial projects. However, it likely lacks the necessary control features
 required to deliver a final product. I unfortunately lack the expertise to
@@ -10,32 +10,6 @@ Myri to that level.
 With that said, I do believe that at the time of writing, Myri is the closest to
 a production-ready ECS audio solution for Unity Engine proper (not Tiny). So I
 hope you enjoy trying it out and feel free to send feedback!
-
-## Installing Myri
-
-If you are using the *Bootstrap – Injection Workflow*, you do not have to do
-anything and can skip to the next section.
-
-If you are using the *Bootstrap – Explicit Workflow*, you need to install the
-`AudioSystem` yourself. The system can be installed in most places, but you will
-likely want to install it right before a sync point. `PreSyncPointGroup` or
-right before `EndSimulationEntityCommandBufferSystem` after the
-`TransformSystemGroup` are both good candidates. The following is sufficient:
-
-```csharp
-[UpdateInGroup(typeof(Latios.Systems.PreSyncPointGroup))]
-public class MyriPreSyncRootSuperSystem : RootSuperSystem
-{
-    protected override void CreateSystems()
-    {
-        GetOrCreateAndAddSystem<Latios.Myri.Systems.AudioSystem>();
-    }
-}
-```
-
-Entities with Myri components that also have a Parent must ensure their
-`LocalToWorld` is up-to-date (a queued-up job is sufficient) when the
-`AudioSystem` executes.
 
 ## Authoring
 
@@ -55,7 +29,10 @@ For *Looping* sources, *Voices* is the number of unique audio sources that will
 play with the same clip. Each unique source will be played with a unique offset.
 The offsets are evenly distributed. All sources sharing the same clip will be
 assigned one of these offsets, and sources sharing the same offset will be
-combined.
+combined. Voices are synchronized with the application time independent of when
+the source was created. If you would like to play a source from the beginning
+when it is created, check the *Play From Beginning At Spawn* checkbox. In this
+case, the *Voices* parameter does nothing.
 
 One-shot sources will be combined if they begin playing at the same time (the
 same audio frame).
@@ -96,7 +73,7 @@ with the main thread rather than the mixing thread, and transmits the samples
 over to the mixing thread with each update. If the main thread were to stall,
 the mixing thread will eventually run out of samples and audio will cut out.
 
-The *Audio Frames Per Update* controls the number of audio frames Myri will
+The *Safety Audio Frames* controls the number of extra audio frames Myri will
 compute and send to the mixing thread per update. Higher values decrease the
 chance of the mixing thread being starved but require more computational power.
 
@@ -115,12 +92,31 @@ one-shot. The first audio frame of that one-shot will be omitted. This is
 significantly more likely to happen if the audio framerate is higher than the
 main thread framerate.
 
-*Audio Subframes Per Frame* can help mitigate this problem by treating multiple
-mixer thread updates as a single audio frame, effectively reducing the audio
-framerate proportionally. This comes at a performance cost as well as less
+In that case, *Audio Frames Per Update* can help mitigate this problem by
+sending multiple audio frames in less frequent batches, effectively reducing the
+audio framerate proportionally. This comes at a performance cost as well as less
 “responsive” audio relative to the simulation, and some projects may prefer to
 accept the occasional first audio frame drops and leave *Audio Subframes Per
 Frame* at *1*.
+
+For scenarios where the main thread framerate outpaces the audio framerate, but
+sampling consumes a large amount of time, it may instead be preferred to begin
+sampling an audio frame earlier than normal. Setting *Lookahead Audio Frames* to
+a value of 1 or greater will accomplish this.
+
+### Optimizing Clips for Performance
+
+Every audio clip has a sample rate, typically measured in kHz. Common sample
+rates may be 44.1 kHz and 48 kHz. The audio output of the device may have a
+different sample rate than the audio clip. When this happens, Myri needs to
+“resample” the clip to compensate at runtime, which may have a measurable
+performance impact for complex audio workloads. Therefore, it is recommended to
+convert the clips sample rates to the target device’s sample rate if performance
+is a concern. This can be done using the import settings for the audio clip. The
+following image shows an audio clip with a sample rate of 44.1 kHz being
+converted to 48 kHz.
+
+![](media/8986587ec983ff3f342baaf8990b8899.png)
 
 ## IComponentData
 
