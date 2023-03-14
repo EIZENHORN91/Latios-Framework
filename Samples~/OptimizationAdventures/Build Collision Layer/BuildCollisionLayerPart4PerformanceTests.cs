@@ -9,13 +9,14 @@ using Unity.PerformanceTesting;
 using Unity.Transforms;
 
 using Latios.Systems;
+using Unity.Burst.Intrinsics;
 
 namespace OptimizationAdventures
 {
     public partial class BuildingCollisionLayerPerformanceTests
     {
         [BurstCompile]
-        partial struct GenerateJob : IJobEntityBatch
+        partial struct GenerateJob : IJobChunk
         {
             public Random random;
             public Aabb   aabb;
@@ -24,13 +25,13 @@ namespace OptimizationAdventures
             public ComponentTypeHandle<Rotation>    rHandle;
             public ComponentTypeHandle<Collider>    cHandle;
 
-            public unsafe void Execute(ArchetypeChunk batchInChunk, int batchIndex)
+            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
             {
-                var t = batchInChunk.GetNativeArray(tHandle);
-                var r = batchInChunk.GetNativeArray(rHandle);
-                var c = batchInChunk.GetNativeArray(cHandle);
+                var t = chunk.GetNativeArray(tHandle);
+                var r = chunk.GetNativeArray(rHandle);
+                var c = chunk.GetNativeArray(cHandle);
 
-                for (int i = 0; i < batchInChunk.Count; i++)
+                for (int i = 0; i < chunk.Count; i++)
                 {
                     t[i] = new Translation { Value = random.NextFloat3(aabb.min, aabb.max) };
                     r[i]                           = new Rotation { Value = random.NextQuaternionRotation() };
@@ -43,7 +44,7 @@ namespace OptimizationAdventures
         {
             public EntityCommandBuffer.ParallelWriter ecb;
 
-            public void Execute(FindPairsResult result)
+            public void Execute(in FindPairsResult result)
             {
                 if (Physics.DistanceBetween(result.bodyA.collider, result.bodyA.transform, result.bodyB.collider, result.bodyB.transform, 0f, out ColliderDistanceResult _))
                 {
@@ -59,7 +60,7 @@ namespace OptimizationAdventures
             random.InitState(seed);
 
             World world  = new World("Test World");
-            var   system = world.CreateSystem<FixedSimulationSystemGroup>();
+            var   system = world.CreateSystemManaged<FixedSimulationSystemGroup>();
 
             var eq        = world.EntityManager.CreateEntityQuery(typeof(Translation), typeof(Rotation), typeof(Collider), typeof(LocalToWorld));
             var archetype = world.EntityManager.CreateArchetype(typeof(Translation), typeof(Rotation), typeof(Collider), typeof(LocalToWorld));
@@ -67,7 +68,7 @@ namespace OptimizationAdventures
             new GenerateJob
             {
                 random  = new Random(seed),
-                aabb    = settings.worldAABB,
+                aabb    = settings.worldAabb,
                 tHandle = world.EntityManager.GetComponentTypeHandle<Translation>(false),
                 rHandle = world.EntityManager.GetComponentTypeHandle<Rotation>(false),
                 cHandle = world.EntityManager.GetComponentTypeHandle<Collider>(false)
@@ -81,14 +82,19 @@ namespace OptimizationAdventures
 
             SampleUnit unit = count > 9999 ? SampleUnit.Millisecond : SampleUnit.Microsecond;
 
-            Measure.Method(() => { new BuildCollisionLayerP4.Part1FromQueryJob
-                                   {
-                                       layer           = layer,
-                                       aabbs           = aabbs,
-                                       typeGroup       = typeGroup,
-                                       layerIndices    = layerIndices,
-                                       rigidTransforms = transforms
-                                   }.Run(eq); })
+            Measure.Method(() => {
+                var baseIndicesArray = eq.CalculateBaseEntityIndexArray(Allocator.TempJob);
+
+                new BuildCollisionLayerP4.Part1FromQueryJob
+                {
+                    layer                     = layer,
+                    aabbs                     = aabbs,
+                    typeGroup                 = typeGroup,
+                    layerIndices              = layerIndices,
+                    rigidTransforms           = transforms,
+                    firstEntityInChunkIndices = baseIndicesArray
+                }.Run(eq);
+            })
             .SampleGroup("Part1")
             .WarmupCount(0)
             .MeasurementCount(1)
@@ -104,14 +110,19 @@ namespace OptimizationAdventures
             .MeasurementCount(1)
             .Run();
 
-            Measure.Method(() => { new BuildCollisionLayerP4.Part3FromQueryJob
-                                   {
-                                       layer          = layer,
-                                       aabbs          = aabbs,
-                                       layerIndices   = layerIndices,
-                                       rigidTranforms = transforms,
-                                       typeGroup      = typeGroup
-                                   }.Run(eq); })
+            Measure.Method(() => {
+                var baseIndicesArray = eq.CalculateBaseEntityIndexArray(Allocator.TempJob);
+
+                new BuildCollisionLayerP4.Part3FromQueryJob
+                {
+                    layer                     = layer,
+                    aabbs                     = aabbs,
+                    layerIndices              = layerIndices,
+                    rigidTranforms            = transforms,
+                    typeGroup                 = typeGroup,
+                    firstEntityInChunkIndices = baseIndicesArray
+                }.Run(eq);
+            })
             .SampleGroup("Part3")
             .WarmupCount(0)
             .MeasurementCount(1)
@@ -166,91 +177,91 @@ namespace OptimizationAdventures
         [Test, Performance]
         public void Build_10()
         {
-            BuildLayerPerformanceTests(10, 1, new CollisionLayerSettings { worldAABB = new Aabb(-1f, 1f), worldSubdivisionsPerAxis = new int3(1, 1, 1) });
+            BuildLayerPerformanceTests(10, 1, new CollisionLayerSettings { worldAabb = new Aabb(-1f, 1f), worldSubdivisionsPerAxis = new int3(1, 1, 1) });
         }
 
         [Test, Performance]
         public void Build_20()
         {
-            BuildLayerPerformanceTests(20, 12, new CollisionLayerSettings { worldAABB = new Aabb(-1f, 1f), worldSubdivisionsPerAxis = new int3(1, 1, 1) });
+            BuildLayerPerformanceTests(20, 12, new CollisionLayerSettings { worldAabb = new Aabb(-1f, 1f), worldSubdivisionsPerAxis = new int3(1, 1, 1) });
         }
 
         [Test, Performance]
         public void Build_50()
         {
-            BuildLayerPerformanceTests(50, 16, new CollisionLayerSettings { worldAABB = new Aabb(-1f, 1f), worldSubdivisionsPerAxis = new int3(1, 1, 1) });
+            BuildLayerPerformanceTests(50, 16, new CollisionLayerSettings { worldAabb = new Aabb(-1f, 1f), worldSubdivisionsPerAxis = new int3(1, 1, 1) });
         }
 
         [Test, Performance]
         public void Build_100()
         {
-            BuildLayerPerformanceTests(100, 28, new CollisionLayerSettings { worldAABB = new Aabb(-10f, 10f), worldSubdivisionsPerAxis = new int3(1, 2, 2) });
+            BuildLayerPerformanceTests(100, 28, new CollisionLayerSettings { worldAabb = new Aabb(-10f, 10f), worldSubdivisionsPerAxis = new int3(1, 2, 2) });
         }
 
         [Test, Performance]
         public void Build_200()
         {
-            BuildLayerPerformanceTests(200, 283, new CollisionLayerSettings { worldAABB = new Aabb(-10f, 10f), worldSubdivisionsPerAxis = new int3(1, 2, 2) });
+            BuildLayerPerformanceTests(200, 283, new CollisionLayerSettings { worldAabb = new Aabb(-10f, 10f), worldSubdivisionsPerAxis = new int3(1, 2, 2) });
         }
 
         [Test, Performance]
         public void Build_500()
         {
-            BuildLayerPerformanceTests(500, 286, new CollisionLayerSettings { worldAABB = new Aabb(-10f, 10f), worldSubdivisionsPerAxis = new int3(1, 2, 2) });
+            BuildLayerPerformanceTests(500, 286, new CollisionLayerSettings { worldAabb = new Aabb(-10f, 10f), worldSubdivisionsPerAxis = new int3(1, 2, 2) });
         }
 
         [Test, Performance]
         public void Build_1000()
         {
-            BuildLayerPerformanceTests(1000, 654, new CollisionLayerSettings { worldAABB = new Aabb(-100f, 100f), worldSubdivisionsPerAxis = new int3(1, 2, 2) });
+            BuildLayerPerformanceTests(1000, 654, new CollisionLayerSettings { worldAabb = new Aabb(-100f, 100f), worldSubdivisionsPerAxis = new int3(1, 2, 2) });
         }
 
         [Test, Performance]
         public void Build_2000()
         {
-            BuildLayerPerformanceTests(2000, 6542, new CollisionLayerSettings { worldAABB = new Aabb(-100f, 100f), worldSubdivisionsPerAxis = new int3(1, 2, 2) });
+            BuildLayerPerformanceTests(2000, 6542, new CollisionLayerSettings { worldAabb = new Aabb(-100f, 100f), worldSubdivisionsPerAxis = new int3(1, 2, 2) });
         }
 
         [Test, Performance]
         public void Build_5000()
         {
-            BuildLayerPerformanceTests(5000, 6574, new CollisionLayerSettings { worldAABB = new Aabb(-100f, 100f), worldSubdivisionsPerAxis = new int3(1, 2, 2) });
+            BuildLayerPerformanceTests(5000, 6574, new CollisionLayerSettings { worldAabb = new Aabb(-100f, 100f), worldSubdivisionsPerAxis = new int3(1, 2, 2) });
         }
 
         [Test, Performance]
         public void Build_10000()
         {
-            BuildLayerPerformanceTests(10000, 8873, new CollisionLayerSettings { worldAABB = new Aabb(-1000f, 1000f), worldSubdivisionsPerAxis = new int3(1, 4, 4) });
+            BuildLayerPerformanceTests(10000, 8873, new CollisionLayerSettings { worldAabb = new Aabb(-1000f, 1000f), worldSubdivisionsPerAxis = new int3(1, 4, 4) });
         }
 
         [Test, Performance]
         public void Build_20000()
         {
-            BuildLayerPerformanceTests(20000, 88735, new CollisionLayerSettings { worldAABB = new Aabb(-1000f, 1000f), worldSubdivisionsPerAxis = new int3(1, 4, 4) });
+            BuildLayerPerformanceTests(20000, 88735, new CollisionLayerSettings { worldAabb = new Aabb(-1000f, 1000f), worldSubdivisionsPerAxis = new int3(1, 4, 4) });
         }
 
         [Test, Performance]
         public void Build_50000()
         {
-            BuildLayerPerformanceTests(50000, 88732, new CollisionLayerSettings { worldAABB = new Aabb(-1000f, 1000f), worldSubdivisionsPerAxis = new int3(1, 4, 4) });
+            BuildLayerPerformanceTests(50000, 88732, new CollisionLayerSettings { worldAabb = new Aabb(-1000f, 1000f), worldSubdivisionsPerAxis = new int3(1, 4, 4) });
         }
 
         [Test, Performance]
         public void Build_100000()
         {
-            BuildLayerPerformanceTests(100000, 1123, new CollisionLayerSettings { worldAABB = new Aabb(-2000f, 2000f), worldSubdivisionsPerAxis = new int3(1, 4, 4) });
+            BuildLayerPerformanceTests(100000, 1123, new CollisionLayerSettings { worldAabb = new Aabb(-2000f, 2000f), worldSubdivisionsPerAxis = new int3(1, 4, 4) });
         }
 
         [Test, Performance]
         public void Build_200000()
         {
-            BuildLayerPerformanceTests(200000, 1123, new CollisionLayerSettings { worldAABB = new Aabb(-2000f, 2000f), worldSubdivisionsPerAxis = new int3(1, 4, 4) });
+            BuildLayerPerformanceTests(200000, 1123, new CollisionLayerSettings { worldAabb = new Aabb(-2000f, 2000f), worldSubdivisionsPerAxis = new int3(1, 4, 4) });
         }
 
         [Test, Performance]
         public void Build_500000()
         {
-            BuildLayerPerformanceTests(500000, 11237, new CollisionLayerSettings { worldAABB = new Aabb(-2000f, 2000f), worldSubdivisionsPerAxis = new int3(1, 4, 4) });
+            BuildLayerPerformanceTests(500000, 11237, new CollisionLayerSettings { worldAabb = new Aabb(-2000f, 2000f), worldSubdivisionsPerAxis = new int3(1, 4, 4) });
         }
     }
 }

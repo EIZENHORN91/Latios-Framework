@@ -1,5 +1,6 @@
 ﻿using Latios.Psyshock;
 using Unity.Burst;
+using Unity.Burst.Intrinsics;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
@@ -43,13 +44,17 @@ namespace OptimizationAdventures
         [BurstCompile]
         public struct Part1FromQueryJob : IJobChunk
         {
-            public TestCollisionLayer             layer;
-            public NativeArray<int>               layerIndices;
-            public NativeArray<RigidTransform>    rigidTransforms;
-            public NativeArray<Aabb>              aabbs;
-            [ReadOnly] public LayerChunkTypeGroup typeGroup;
-            public void Execute(ArchetypeChunk chunk, int chunkIndex, int firstEntityIndex)
+            public TestCollisionLayer                                     layer;
+            public NativeArray<int>                                       layerIndices;
+            public NativeArray<RigidTransform>                            rigidTransforms;
+            public NativeArray<Aabb>                                      aabbs;
+            [ReadOnly] public LayerChunkTypeGroup                         typeGroup;
+            [ReadOnly, DeallocateOnJobCompletion] public NativeArray<int> firstEntityInChunkIndices;
+
+            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
             {
+                var firstEntityIndex = firstEntityInChunkIndices[unfilteredChunkIndex];
+
                 if (chunk.Has(typeGroup.parent))
                 {
                     ProcessMaybeScaled(chunk, firstEntityIndex);
@@ -199,8 +204,12 @@ namespace OptimizationAdventures
             [ReadOnly]
             public LayerChunkTypeGroup typeGroup;
 
-            public void Execute(ArchetypeChunk chunk, int chunkIndex, int firstEntityIndex)
+            [ReadOnly, DeallocateOnJobCompletion] public NativeArray<int> firstEntityInChunkIndices;
+
+            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
             {
+                var firstEntityIndex = firstEntityInChunkIndices[unfilteredChunkIndex];
+
                 if (chunk.Has(typeGroup.scale))
                     ProcessScale(chunk, firstEntityIndex);
                 else

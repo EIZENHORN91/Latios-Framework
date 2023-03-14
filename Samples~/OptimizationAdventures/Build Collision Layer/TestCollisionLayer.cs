@@ -19,8 +19,8 @@ namespace OptimizationAdventures
         //Todo: World settings?
         internal TestCollisionLayer(int bodyCount, CollisionLayerSettings settings, Allocator allocator)
         {
-            worldMin                 = settings.worldAABB.min;
-            worldAxisStride          = (settings.worldAABB.max - worldMin) / settings.worldSubdivisionsPerAxis;
+            worldMin                 = settings.worldAabb.min;
+            worldAxisStride          = (settings.worldAabb.max - worldMin) / settings.worldSubdivisionsPerAxis;
             worldSubdivisionsPerAxis = settings.worldSubdivisionsPerAxis;
 
             bucketStartsAndCounts = new NativeArray<int2>(settings.worldSubdivisionsPerAxis.x * settings.worldSubdivisionsPerAxis.y * settings.worldSubdivisionsPerAxis.z + 1,

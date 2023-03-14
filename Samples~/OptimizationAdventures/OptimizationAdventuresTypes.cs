@@ -28,31 +28,51 @@ namespace OptimizationAdventures
         }
     }
 
-    public struct EntityPair : IEquatable<EntityPair>
+    public struct AabbEntityMorton : IComparable<AabbEntityMorton>
     {
-        public Entity a;
-        public Entity b;
+        public uint3  min;
+        public uint3  max;
+        public Aabb   aabb;
+        public Entity entity;
 
-        public EntityPair(Entity aa, Entity bb)
+        public int CompareTo(AabbEntityMorton other)
         {
-            a = aa;
-            b = bb;
-        }
-
-        public bool Equals(EntityPair other)
-        {
-            return a == other.a && b == other.b;
-        }
-
-        public static bool operator ==(EntityPair a, EntityPair b)
-        {
-            return a.Equals(b);
-        }
-
-        public static bool operator !=(EntityPair a, EntityPair b)
-        {
-            return !a.Equals(b);
+            var result = min.z.CompareTo(other.min.z);
+            if (result == 0)
+            {
+                result = min.y.CompareTo(other.min.y);
+                if (result == 0)
+                    result = min.x.CompareTo(other.min.x);
+            }
+            return result;
         }
     }
+
+public struct EntityPair : IEquatable<EntityPair>
+{
+    public Entity a;
+    public Entity b;
+
+    public EntityPair(Entity aa, Entity bb)
+    {
+        a = aa;
+        b = bb;
+    }
+
+    public bool Equals(EntityPair other)
+    {
+        return a == other.a && b == other.b;
+    }
+
+    public static bool operator ==(EntityPair a, EntityPair b)
+    {
+        return a.Equals(b);
+    }
+
+    public static bool operator !=(EntityPair a, EntityPair b)
+    {
+        return !a.Equals(b);
+    }
+}
 }
 

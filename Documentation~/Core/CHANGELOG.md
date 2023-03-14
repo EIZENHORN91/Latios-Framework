@@ -6,6 +6,202 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic
 Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [0.6.5] – 2023-2-18
+
+Officially supports Entities [1.0.0 prerelease 15]
+
+### Added
+
+-   Added `ArchetypeChunk` exposed extensions `GetMetaEntity()` and`
+    GetChunkPtrAsUlong()`
+-   Added `float3x4.Scale()`
+
+### Changed
+
+-   Bootstrap Templates no longer require unsafe code enabled
+
+### Fixed
+
+-   Fixed `PreSyncPointGroup` sorting warnings
+-   Fixed various code compilation issues when creating builds
+-   Fixed exception thrown while destroying a `LatiosWorldUnamanged` if the
+    project does not have any managed structs
+
+### Improved
+
+-   System sorting has been disabled for disabled for
+    `ManagedComponentsReactiveSystemGroup`, reducing startup performance
+-   Removed unnecessary system sorting calls when `enableSorting` is false and
+    systems were added but not removed
+
+## [0.6.4] – 2022-12-29
+
+Officially supports Entities [1.0.0 prerelease 15]
+
+### Added
+
+-   Added `FluentQuery.IgnoreEnableableBits()` which adds
+    `EntityQueryOptions.IgnoreComponentEnabledState` to the query
+-   Added `IBakerExposedExtensions.GetDefaultBakerTypes()` to investigate all
+    types of bakers that will be created by default by Unity
+-   Added `math.InverseRotateFast()` methods which assume the passed in
+    quaternions are normalized and because of this perform faster inverse
+    operations
+
+### Changed
+
+-   Renamed `FluentQuery.IncludeDisabled()` to`
+    FluentQuery.IncludeDisabledEntities()`
+
+### Fixed
+
+-   Fixed `ICustomBakingBootstrap` ignoring `GameObjectBaker` types and not
+    respecting derived type sorting
+-   Fixed Smart Blobbers pre-maturely disposing shared blob assets
+-   Fixed `SuperSystem` overwriting an override `EnableSystemSorting = true`
+    inside of `CreateSystems()`
+-   Fixed Improved Transforms warnings about caching type handles
+
+## [0.6.1] – 2022-11-28
+
+Officially supports Entities [1.0.0 prerelease 15]
+
+### Added
+
+-   Added `SystemRng` which provides a new workflow for `Rng` inside of
+    `IJobEntity`
+-   Added `Rng` constructor overload which accepts a `FixedString128Bytes`
+-   Added `float3x4.TRS()` extension method
+
+### Changed
+
+-   `CurrentScene` is now updated before `OnNewScene()` callbacks
+
+### Fixed
+
+-   Fixed script templates which attempted to load from an invalid path due to a
+    directory restructuring
+-   Fixed profile markers for `SyncPointPlaybackSystem` so that system names are
+    displayed correctly
+-   Fixed `Child` buffer being left behind on changed parents when using
+    Improved or Extreme Transforms
+
+### Improved
+
+-   Fluent Queries now only generates GC when using shared component filters,
+    whose support will be removed in 0.7 to provide full Burst-compatibility
+-   `MergeBlackboardsSystem` only runs when queries are matched, improving main
+    thread performance
+
+## [0.6.0] – 2022-11-16
+
+Officially supports Entities [1.0.0 experimental]
+
+### Added
+
+-   *New Feature:* Added `ICustomEditorBootstrap` which allows modifying the
+    setup of an Editor world similar to `ICustomBootstrap`
+-   Added new script templates
+-   Added `LatiosWorldUnmanaged`, which is now the recommended method of
+    accessing Blackboard Entities, Managed Struct Components, Collection
+    Components, and the `syncPoint` from unmanaged systems
+-   Added methods and extensions to `LatiosWorld`, `SubSystem`, `SuperSystem`,
+    `WorldUnmanaged`, `EntityManager`, and `SystemState` for retrieving a
+    `LatiosWorldUnmanaged` which can be cached in `OnCreate()` of a system
+-   Added `LatiosWorld.zeroToleranceForExceptions` which will cause systems to
+    stop updating after a system throws an exception caught by one of the Latios
+    Framework’s system update methods, preventing following systems from adding
+    false errors to the error log (this is off by default)
+-   Added `SyncPointPlaybackSystem.AddMainThreadCompletionForProducer()` to
+    specify the command buffer was only used from the main thread
+
+### Changed
+
+-   **Breaking:** `ICustomConversionBootstrap` has been replaced with
+    `ICustomBakingBootstrap`
+-   **Breaking:** Smart Blobbers have been completely redesigned to work with
+    the baking workflow and any code using them will have to be rewritten
+-   **Breaking:** Renamed `IManagedComponent` to `IManagedStructComponent` and
+    modified its `AssociatedComponentType` to use a `ComponentType`
+-   **Breaking:** `ICollectionComponent`’s interface and related APIs have
+    changed such that it is now the responsibility of the component itself to
+    track if it has been initialized
+-   **Breaking:** `ICollectionComponent` must now be unmanaged, and managed data
+    should be migrated to a companion `IManagedStructComponent`
+-   **Breaking:** Renamed `SuperSystem.GetOrCreateAndAddSystem()` to
+    `SuperSystem.GetOrCreateAndAddManagedSystem()`
+-   Renamed `ComponentSystemBaseSystemHandleUntypedUnion` to
+    `ComponentSystemBaseSystemHandleUnion`
+-   Blackboard Entities are now backed by a `LatiosWorldUnmanaged` rather than
+    an `EntityManager`
+-   Authoring components now use Bakers rather than implement conversion
+    interfaces
+-   Scene Manager now forces subscenes to load synchronously
+-   `DontDestroyOnSceneChangeTag` will now prevent an entity associated with a
+    subscene from being destroyed when the subscene is unloaded
+-   `LatiosWorld.syncPoint` is now an unmanaged system returned by ref after a
+    safety check
+-   `SyncPointPlaybackSystem` is now updated by a
+    `SyncPointPlaybackSystemDispatch` system type, which should be used for
+    attribute-based ordering
+-   System ordering in `InitializationSystemGroup` has been altered to work
+    without `ConvertToEntitySystem`
+-   All component types whose namespace exactly equals “Unity.Entities” are
+    excluded from Blackboard Entity merging
+
+### Fixed
+
+-   Fixed determinism of `ParentSystem` when adding `Child` buffer
+
+### Improved
+
+-   All custom collections (including command buffers) no longer use
+    `DisposeSentinel` and now support custom allocators
+-   Both managed and unmanaged systems are created simultaneously in
+    `BootstrapTools.InjectSystems()`, more closely matching Unity’s default
+    behavior
+-   `CoreBootstrap` now detects install conflicts at runtime
+-   `EntityManager` extension methods for Collection Components and Managed
+    Struct Components now only require the presence of a `LatiosWorldUnmanaged`
+    rather than a full `LatiosWorld`, though using a cached
+    `LatiosWorldUnmanaged` is still faster
+-   Collection Components and `syncPoint` job dependencies are now automatically
+    tracked for all systems updated by a Latios Framework system updater
+-   `SubSystem` and `SuperSystem` now only require the presence of a
+    `LatiosWorldUnmanaged` rather than a full `LatiosWorld`
+-   `ImprovedTransforms` and `ExtremeHierarchy` systems are all fully unmanaged
+    and Burst-compiled
+-   `SyncPointPlaybackSystem` now uses a `RewindableAllocator` for command
+    buffers
+
+### Removed
+
+-   Removed `SystemState` Blackboard Entity accessors, which should now be
+    replaced with `LatiosWorldUnmanaged`
+-   Removed support for Collection Components and Managed Struct Components in
+    `EntityDataCopyKit`
+-   Removed some Collection Component `JobHandle` manipulation variants as
+    `JobHandle` combining performance quirks in 2022 is not yet fully understood
+-   Removed `BlackboardUnmanagedSystem`, which is now replaced by
+    `LatiosWorldUnmanaged`
+
+## [0.5.8] – 2022-11-10
+
+Officially supports Entities [0.51.1]
+
+### Fixed
+
+-   Fixed incorrect input locking behavior for batching Smart Blobbers that
+    caused exceptions when used with subscenes
+
+## [0.5.7] – 2022-8-28
+
+Officially supports Entities [0.51.1]
+
+### Changed
+
+-   Explicitly applied Script Updater changes for hashmap renaming
+
 ## [0.5.6] – 2022-8-21
 
 Officially supports Entities [0.50.1] – [0.51.1]

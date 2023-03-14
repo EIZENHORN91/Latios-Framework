@@ -6,6 +6,158 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic
 Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [0.6.6] – 2023-3-13
+
+Officially supports Entities [1.0.0 prerelease 15]
+
+### Fixed
+
+-   Fixed AclUnity compression of scalar clips not initializing safety for the
+    compressed clip result
+-   Fixed exported bones not being assigned correctly during baking when there
+    were more than one in a skeleton
+
+## [0.6.5] – 2023-2-18
+
+Officially supports Entities [1.0.0 prerelease 15]
+
+### Fixed
+
+-   Fixed AclUnity plugins not being configured correctly for desktop linux
+    builds
+-   Added missing `[DisableAutoCreation]` to `KinemationSmartBlobberBakingGroup`
+
+## [0.6.4] – 2022-12-29
+
+Officially supports Entities [1.0.0 prerelease 15]
+
+### Fixed
+
+-   Fixed children of exported bone Game Objects being reparented directly to
+    the skeleton during baking rather than the exported bones
+-   Fixed an issue where Kinemation `SuperSystems` may have been sorted by
+    attribute when such sorting was not desired
+
+### Improved
+
+-   If for some reason an exported bone is not assigned an index or assigned an
+    index to a root, it is now no longer treated as an exported bone and baking
+    will restore default transform components for it
+
+## [0.6.2] – 2022-12-10
+
+Officially supports Entities [1.0.0 prerelease 15]
+
+### Improved
+
+-   Kinemation renderer now uses a fixed frame count when recycling rendering
+    buffers instead of an async readback, which prevented devices from going
+    into a sleep state
+
+## [0.6.1] – 2022-11-28
+
+Officially supports Entities [1.0.0 prerelease 15]
+
+### Added
+
+-   Added `OverrideMeshRendererBase` which if present on a `GameObject` will
+    disable default `MeshRenderer` baking for that `GameObject`
+-   Added `OverrideMeshRendererBakerBase<T>` which allows baking a `Renderer`
+    using a custom mesh and materials that might be generated at bake time
+
+### Fixed
+
+-   Fixed issue where the runtime mechanism for ensuring Kinemation culling
+    components were present queried `RenderMesh` instead of `MaterialMeshInfo`
+-   Fixed issue where `SkinnedMeshRenderers` might be excluded from
+    `RenderMeshArray` post-processing during baking
+
+### Improved
+
+-   Kinemation renderer was updated with the latest material error handling
+    improvements of Entities Graphics
+
+## [0.6.0] – 2022-11-16
+
+Officially supports Entities [1.0.0 experimental]
+
+### Added
+
+-   *New Feature:* The Kinemation renderer can now be used in the Editor World,
+    providing previews of skinned mesh entities
+-   Added `ChunkPerCameraCullingSplitsMask` for shadow map culling
+-   Added `CullingSplitElement` for shadow map culling
+-   Added many new fields to `CullingContext` which come from the new
+    `BatchRendererGroup` API
+-   Added `ChunkPerCameraSkeletonCullingSplitsMask` for shadow map culling of
+    skeletons
+
+### Changed
+
+-   **Breaking:** Authoring has been completely rewritten to use baking workflow
+-   **Breaking:** `KinemationConversionBootstrap.InstallKinemationConversion()`
+    has been replaced with
+    `KinemationBakingBootstrap.InstallKinemationBakersAndSystems()`
+-   **Breaking:** `AnimationClip.ExtractKienamtionClipEvents()` now returns a
+    `NativeArray` and expects an `Allocator` argument
+-   **Breaking:** Renamed `PhysicsComponentDataFromEntity` to
+    `PhysicsComponentLookup` and `PhysicsBufferFromEntity` to
+    `PhysicsBufferLookup`
+-   Exposed skeleton baking will not include a descendent Game Object with an
+    Animator as part of the skeleton
+-   Optimized skeleton baking only considers the first level children without
+    Skinned Mesh Renderers or Animators to be exported bones, meaning exported
+    bones can now have dynamic children
+-   *Skeleton Authoring* has been replaced with *Skeleton Settings Authoring*
+-   The new Culling algorithms work differently, so custom culling code should
+    be re-evaluated as there may be opportunities to leverage more of the system
+
+### Fixed
+
+-   Fixed component conflicts between bound skinned meshes and exported bones
+    during baking
+-   Fixed bug where exposed bone culling arrays were allocated to double the
+    amount of memory they actually required
+
+### Improved
+
+-   Added property inspectors in the editor for `MeshBindingPathsBlob`,
+    `SkeletonBindingPathsBlob`, and `OptimizedSkeletonHierarchyBlob` which can
+    be used to debug binding issues
+-   Many systems are now Burst-compiled `ISystems` using the much-improved
+    Collection Component manager and consequently run much faster on the main
+    thread, especially during culling with improvements as much as 5 times
+    better performance
+-   Material Property Component Type Handles are fully cached
+-   Meshes no longer need to be marked Read/Write enabled
+
+### Removed
+
+-   Removed `BindingMode`, `ImportStatus`, and `BoneTransformData`
+
+## [0.5.8] – 2022-11-10
+
+Officially supports Entities [0.51.1]
+
+### Fixed
+
+-   Fixed a crash where a `MeshSkinningBlob` is accessed after it has been
+    unloaded by a subscene
+-   Fixed `LocalToParent` being uninitialized if it was not already present on a
+    skinned mesh entity prior to binding
+-   Fixed bone bounds not being rebound correctly when a skinned mesh is removed
+-   Fixed several caching issues that resulted in bindings reading the wrong
+    cached binding data after all entities referencing a cached binding are
+    destroyed and new bindings are later created
+
+## [0.5.7] – 2022-8-28
+
+Officially supports Entities [0.51.1]
+
+### Changed
+
+-   Explicitly applied Script Updater changes for hashmap renaming
+
 ## [0.5.6] – 2022-8-21
 
 Officially supports Entities [0.50.1] – [0.51.1]

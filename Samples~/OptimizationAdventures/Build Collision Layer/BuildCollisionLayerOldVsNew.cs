@@ -1,5 +1,8 @@
-﻿using Latios.Psyshock;
+﻿using System.Diagnostics;
+using Latios;
+using Latios.Psyshock;
 using Unity.Burst;
+using Unity.Burst.Intrinsics;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
@@ -51,13 +54,17 @@ namespace OptimizationAdventures
         [BurstCompile]
         public struct Part1FromQueryJob : IJobChunk
         {
-            public TestCollisionLayer             layer;
-            public NativeArray<int>               layerIndices;
-            public NativeArray<ColliderAoSData>   colliderAoS;
-            public NativeArray<float>             xmins;
-            [ReadOnly] public LayerChunkTypeGroup typeGroup;
-            public void Execute(ArchetypeChunk chunk, int chunkIndex, int firstEntityIndex)
+            [ReadOnly] public TestCollisionLayer                                               layer;
+            [NoAlias, NativeDisableParallelForRestriction] public NativeArray<int>             layerIndices;
+            [NoAlias, NativeDisableParallelForRestriction] public NativeArray<ColliderAoSData> colliderAoS;
+            [NoAlias, NativeDisableParallelForRestriction] public NativeArray<float>           xmins;
+            [ReadOnly] public LayerChunkTypeGroup                                              typeGroup;
+            [ReadOnly, DeallocateOnJobCompletion] public NativeArray<int>                      firstEntityInChunkIndices;
+
+            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
             {
+                var firstEntityIndex = firstEntityInChunkIndices[unfilteredChunkIndex];
+
                 bool ltw = chunk.Has(typeGroup.localToWorld);
                 bool p   = chunk.Has(typeGroup.parent);
                 bool t   = chunk.Has(typeGroup.translation);
@@ -72,14 +79,14 @@ namespace OptimizationAdventures
 
                 switch (mask)
                 {
-                    case 0x0: ProcessNoTransform(chunk, firstEntityIndex); break;
-                    case 0x1: ProcessScale(chunk, firstEntityIndex); break;
-                    case 0x2: ProcessRotation(chunk, firstEntityIndex); break;
-                    case 0x3: ProcessRotationScale(chunk, firstEntityIndex); break;
-                    case 0x4: ProcessTranslation(chunk, firstEntityIndex); break;
-                    case 0x5: ProcessTranslationScale(chunk, firstEntityIndex); break;
-                    case 0x6: ProcessTranslationRotation(chunk, firstEntityIndex); break;
-                    case 0x7: ProcessTranslationRotationScale(chunk, firstEntityIndex); break;
+                    case 0x0: ProcessNoTransform(in chunk, useEnabledMask, chunkEnabledMask, firstEntityIndex); break;
+                    case 0x1: ProcessScale(in chunk, useEnabledMask, chunkEnabledMask, firstEntityIndex); break;
+                    case 0x2: ProcessRotation(in chunk, useEnabledMask, chunkEnabledMask, firstEntityIndex); break;
+                    case 0x3: ProcessRotationScale(in chunk, useEnabledMask, chunkEnabledMask, firstEntityIndex); break;
+                    case 0x4: ProcessTranslation(in chunk, useEnabledMask, chunkEnabledMask, firstEntityIndex); break;
+                    case 0x5: ProcessTranslationScale(in chunk, useEnabledMask, chunkEnabledMask, firstEntityIndex); break;
+                    case 0x6: ProcessTranslationRotation(in chunk, useEnabledMask, chunkEnabledMask, firstEntityIndex); break;
+                    case 0x7: ProcessTranslationRotationScale(in chunk, useEnabledMask, chunkEnabledMask, firstEntityIndex); break;
 
                     case 0x8: ErrorCase(); break;
                     case 0x9: ErrorCase(); break;
@@ -90,185 +97,197 @@ namespace OptimizationAdventures
                     case 0xe: ErrorCase(); break;
                     case 0xf: ErrorCase(); break;
 
-                    case 0x10: ProcessLocalToWorld(chunk, firstEntityIndex); break;
-                    case 0x11: ProcessScale(chunk, firstEntityIndex); break;
-                    case 0x12: ProcessRotation(chunk, firstEntityIndex); break;
-                    case 0x13: ProcessRotationScale(chunk, firstEntityIndex); break;
-                    case 0x14: ProcessTranslation(chunk, firstEntityIndex); break;
-                    case 0x15: ProcessTranslationScale(chunk, firstEntityIndex); break;
-                    case 0x16: ProcessTranslationRotation(chunk, firstEntityIndex); break;
-                    case 0x17: ProcessTranslationRotationScale(chunk, firstEntityIndex); break;
+                    case 0x10: ProcessLocalToWorld(in chunk, useEnabledMask, chunkEnabledMask, firstEntityIndex); break;
+                    case 0x11: ProcessScale(in chunk, useEnabledMask, chunkEnabledMask, firstEntityIndex); break;
+                    case 0x12: ProcessRotation(in chunk, useEnabledMask, chunkEnabledMask, firstEntityIndex); break;
+                    case 0x13: ProcessRotationScale(in chunk, useEnabledMask, chunkEnabledMask, firstEntityIndex); break;
+                    case 0x14: ProcessTranslation(in chunk, useEnabledMask, chunkEnabledMask, firstEntityIndex); break;
+                    case 0x15: ProcessTranslationScale(in chunk, useEnabledMask, chunkEnabledMask, firstEntityIndex); break;
+                    case 0x16: ProcessTranslationRotation(in chunk, useEnabledMask, chunkEnabledMask, firstEntityIndex); break;
+                    case 0x17: ProcessTranslationRotationScale(in chunk, useEnabledMask, chunkEnabledMask, firstEntityIndex); break;
 
-                    case 0x18: ProcessParent(chunk, firstEntityIndex); break;
-                    case 0x19: ProcessParentScale(chunk, firstEntityIndex); break;
-                    case 0x1a: ProcessParent(chunk, firstEntityIndex); break;
-                    case 0x1b: ProcessParentScale(chunk, firstEntityIndex); break;
-                    case 0x1c: ProcessParent(chunk, firstEntityIndex); break;
-                    case 0x1d: ProcessParentScale(chunk, firstEntityIndex); break;
-                    case 0x1e: ProcessParent(chunk, firstEntityIndex); break;
-                    case 0x1f: ProcessParentScale(chunk, firstEntityIndex); break;
+                    case 0x18: ProcessParent(in chunk, useEnabledMask, chunkEnabledMask, firstEntityIndex); break;
+                    case 0x19: ProcessParentScale(in chunk, useEnabledMask, chunkEnabledMask, firstEntityIndex); break;
+                    case 0x1a: ProcessParent(in chunk, useEnabledMask, chunkEnabledMask, firstEntityIndex); break;
+                    case 0x1b: ProcessParentScale(in chunk, useEnabledMask, chunkEnabledMask, firstEntityIndex); break;
+                    case 0x1c: ProcessParent(in chunk, useEnabledMask, chunkEnabledMask, firstEntityIndex); break;
+                    case 0x1d: ProcessParentScale(in chunk, useEnabledMask, chunkEnabledMask, firstEntityIndex); break;
+                    case 0x1e: ProcessParent(in chunk, useEnabledMask, chunkEnabledMask, firstEntityIndex); break;
+                    case 0x1f: ProcessParentScale(in chunk, useEnabledMask, chunkEnabledMask, firstEntityIndex); break;
 
                     default: ErrorCase(); break;
                 }
             }
 
+            [Conditional("ENABLE_UNITY_COLLECTIONS_CHECKS")]
             private void ErrorCase()
             {
-                throw new System.InvalidOperationException("Error: BuildCollisionLayer.Part1FromQueryJob received an invalid EntityQuery");
+                throw new System.InvalidOperationException("BuildCollisionLayer.Part1FromQueryJob received an invalid EntityQuery");
             }
 
-            private void ProcessNoTransform(ArchetypeChunk chunk, int firstEntityIndex)
+            private void ProcessNoTransform(in ArchetypeChunk chunk, bool useEnabledMask, in v128 chunkEnabledMask, int firstEntityIndex)
             {
                 var chunkEntities  = chunk.GetNativeArray(typeGroup.entity);
                 var chunkColliders = chunk.GetNativeArray(typeGroup.collider);
-                for (int i = 0; i < chunk.Count; i++)
+                var enumerator     = new ChunkEntityWithIndexEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count, firstEntityIndex);
+                while (enumerator.NextEntityIndex(out var i, out var entityInQueryIndex))
                 {
-                    ProcessEntity(firstEntityIndex + i, chunkEntities[i], chunkColliders[i], RigidTransform.identity);
+                    ProcessEntity(entityInQueryIndex, chunkEntities[i], chunkColliders[i], RigidTransform.identity);
                 }
             }
 
-            private void ProcessScale(ArchetypeChunk chunk, int firstEntityIndex)
+            private void ProcessScale(in ArchetypeChunk chunk, bool useEnabledMask, in v128 chunkEnabledMask, int firstEntityIndex)
             {
                 var chunkEntities  = chunk.GetNativeArray(typeGroup.entity);
                 var chunkColliders = chunk.GetNativeArray(typeGroup.collider);
                 var chunkScales    = chunk.GetNativeArray(typeGroup.scale);
-                for (int i = 0; i < chunk.Count; i++)
+                var enumerator     = new ChunkEntityWithIndexEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count, firstEntityIndex);
+                while (enumerator.NextEntityIndex(out var i, out var entityInQueryIndex))
                 {
                     var collider = Physics.ScaleCollider(chunkColliders[i], chunkScales[i]);
-                    ProcessEntity(firstEntityIndex + i, chunkEntities[i], collider, RigidTransform.identity);
+                    ProcessEntity(entityInQueryIndex, chunkEntities[i], in collider, RigidTransform.identity);
                 }
             }
 
-            private void ProcessRotation(ArchetypeChunk chunk, int firstEntityIndex)
+            private void ProcessRotation(in ArchetypeChunk chunk, bool useEnabledMask, in v128 chunkEnabledMask, int firstEntityIndex)
             {
                 var chunkEntities  = chunk.GetNativeArray(typeGroup.entity);
                 var chunkColliders = chunk.GetNativeArray(typeGroup.collider);
                 var chunkRotations = chunk.GetNativeArray(typeGroup.rotation);
-                for (int i = 0; i < chunk.Count; i++)
+                var enumerator     = new ChunkEntityWithIndexEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count, firstEntityIndex);
+                while (enumerator.NextEntityIndex(out var i, out var entityInQueryIndex))
                 {
                     var rigidTransform = new RigidTransform(chunkRotations[i].Value, float3.zero);
-                    ProcessEntity(firstEntityIndex + i, chunkEntities[i], chunkColliders[i], rigidTransform);
+                    ProcessEntity(entityInQueryIndex, chunkEntities[i], chunkColliders[i], in rigidTransform);
                 }
             }
 
-            private void ProcessRotationScale(ArchetypeChunk chunk, int firstEntityIndex)
+            private void ProcessRotationScale(in ArchetypeChunk chunk, bool useEnabledMask, in v128 chunkEnabledMask, int firstEntityIndex)
             {
                 var chunkEntities  = chunk.GetNativeArray(typeGroup.entity);
                 var chunkColliders = chunk.GetNativeArray(typeGroup.collider);
                 var chunkRotations = chunk.GetNativeArray(typeGroup.rotation);
                 var chunkScales    = chunk.GetNativeArray(typeGroup.scale);
-                for (int i = 0; i < chunk.Count; i++)
+                var enumerator     = new ChunkEntityWithIndexEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count, firstEntityIndex);
+                while (enumerator.NextEntityIndex(out var i, out var entityInQueryIndex))
                 {
                     var collider       = Physics.ScaleCollider(chunkColliders[i], chunkScales[i]);
                     var rigidTransform = new RigidTransform(chunkRotations[i].Value, float3.zero);
-                    ProcessEntity(firstEntityIndex + i, chunkEntities[i], collider, rigidTransform);
+                    ProcessEntity(entityInQueryIndex, chunkEntities[i], in collider, in rigidTransform);
                 }
             }
 
-            private void ProcessTranslation(ArchetypeChunk chunk, int firstEntityIndex)
+            private void ProcessTranslation(in ArchetypeChunk chunk, bool useEnabledMask, in v128 chunkEnabledMask, int firstEntityIndex)
             {
                 var chunkEntities     = chunk.GetNativeArray(typeGroup.entity);
                 var chunkColliders    = chunk.GetNativeArray(typeGroup.collider);
                 var chunkTranslations = chunk.GetNativeArray(typeGroup.translation);
-                for (int i = 0; i < chunk.Count; i++)
+                var enumerator        = new ChunkEntityWithIndexEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count, firstEntityIndex);
+                while (enumerator.NextEntityIndex(out var i, out var entityInQueryIndex))
                 {
                     var rigidTransform = new RigidTransform(quaternion.identity, chunkTranslations[i].Value);
-                    ProcessEntity(firstEntityIndex + i, chunkEntities[i], chunkColliders[i], rigidTransform);
+                    ProcessEntity(entityInQueryIndex, chunkEntities[i], chunkColliders[i], in rigidTransform);
                 }
             }
 
-            private void ProcessTranslationScale(ArchetypeChunk chunk, int firstEntityIndex)
+            private void ProcessTranslationScale(in ArchetypeChunk chunk, bool useEnabledMask, in v128 chunkEnabledMask, int firstEntityIndex)
             {
                 var chunkEntities     = chunk.GetNativeArray(typeGroup.entity);
                 var chunkColliders    = chunk.GetNativeArray(typeGroup.collider);
                 var chunkTranslations = chunk.GetNativeArray(typeGroup.translation);
                 var chunkScales       = chunk.GetNativeArray(typeGroup.scale);
-                for (int i = 0; i < chunk.Count; i++)
+                var enumerator        = new ChunkEntityWithIndexEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count, firstEntityIndex);
+                while (enumerator.NextEntityIndex(out var i, out var entityInQueryIndex))
                 {
                     var collider       = Physics.ScaleCollider(chunkColliders[i], chunkScales[i]);
                     var rigidTransform = new RigidTransform(quaternion.identity, chunkTranslations[i].Value);
-                    ProcessEntity(firstEntityIndex + i, chunkEntities[i], collider, rigidTransform);
+                    ProcessEntity(entityInQueryIndex, chunkEntities[i], in collider, in rigidTransform);
                 }
             }
 
-            private void ProcessTranslationRotation(ArchetypeChunk chunk, int firstEntityIndex)
+            private void ProcessTranslationRotation(in ArchetypeChunk chunk, bool useEnabledMask, in v128 chunkEnabledMask, int firstEntityIndex)
             {
                 var chunkEntities     = chunk.GetNativeArray(typeGroup.entity);
                 var chunkColliders    = chunk.GetNativeArray(typeGroup.collider);
                 var chunkTranslations = chunk.GetNativeArray(typeGroup.translation);
                 var chunkRotations    = chunk.GetNativeArray(typeGroup.rotation);
-                for (int i = 0; i < chunk.Count; i++)
+                var enumerator        = new ChunkEntityWithIndexEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count, firstEntityIndex);
+                while (enumerator.NextEntityIndex(out var i, out var entityInQueryIndex))
                 {
                     var rigidTransform = new RigidTransform(chunkRotations[i].Value, chunkTranslations[i].Value);
-                    ProcessEntity(firstEntityIndex + i, chunkEntities[i], chunkColliders[i], rigidTransform);
+                    ProcessEntity(entityInQueryIndex, chunkEntities[i], chunkColliders[i], in rigidTransform);
                 }
             }
 
-            private void ProcessTranslationRotationScale(ArchetypeChunk chunk, int firstEntityIndex)
+            private void ProcessTranslationRotationScale(in ArchetypeChunk chunk, bool useEnabledMask, in v128 chunkEnabledMask, int firstEntityIndex)
             {
                 var chunkEntities     = chunk.GetNativeArray(typeGroup.entity);
                 var chunkColliders    = chunk.GetNativeArray(typeGroup.collider);
                 var chunkTranslations = chunk.GetNativeArray(typeGroup.translation);
                 var chunkRotations    = chunk.GetNativeArray(typeGroup.rotation);
                 var chunkScales       = chunk.GetNativeArray(typeGroup.scale);
-                for (int i = 0; i < chunk.Count; i++)
+                var enumerator        = new ChunkEntityWithIndexEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count, firstEntityIndex);
+                while (enumerator.NextEntityIndex(out var i, out var entityInQueryIndex))
                 {
                     var collider       = Physics.ScaleCollider(chunkColliders[i], chunkScales[i]);
                     var rigidTransform = new RigidTransform(chunkRotations[i].Value, chunkTranslations[i].Value);
-                    ProcessEntity(firstEntityIndex + i, chunkEntities[i], collider, rigidTransform);
+                    ProcessEntity(entityInQueryIndex, chunkEntities[i], in collider, in rigidTransform);
                 }
             }
 
-            private void ProcessLocalToWorld(ArchetypeChunk chunk, int firstEntityIndex)
+            private void ProcessLocalToWorld(in ArchetypeChunk chunk, bool useEnabledMask, in v128 chunkEnabledMask, int firstEntityIndex)
             {
                 var chunkEntities      = chunk.GetNativeArray(typeGroup.entity);
                 var chunkColliders     = chunk.GetNativeArray(typeGroup.collider);
                 var chunkLocalToWorlds = chunk.GetNativeArray(typeGroup.localToWorld);
-                for (int i = 0; i < chunk.Count; i++)
+                var enumerator         = new ChunkEntityWithIndexEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count, firstEntityIndex);
+                while (enumerator.NextEntityIndex(out var i, out var entityInQueryIndex))
                 {
                     var localToWorld   = chunkLocalToWorlds[i];
                     var rotation       = quaternion.LookRotationSafe(localToWorld.Forward, localToWorld.Up);
                     var position       = localToWorld.Position;
                     var rigidTransform = new RigidTransform(rotation, position);
-                    ProcessEntity(firstEntityIndex + i, chunkEntities[i], chunkColliders[i], rigidTransform);
+                    ProcessEntity(entityInQueryIndex, chunkEntities[i], chunkColliders[i], in rigidTransform);
                 }
             }
 
-            private void ProcessParent(ArchetypeChunk chunk, int firstEntityIndex)
+            private void ProcessParent(in ArchetypeChunk chunk, bool useEnabledMask, in v128 chunkEnabledMask, int firstEntityIndex)
             {
                 var chunkEntities      = chunk.GetNativeArray(typeGroup.entity);
                 var chunkColliders     = chunk.GetNativeArray(typeGroup.collider);
                 var chunkLocalToWorlds = chunk.GetNativeArray(typeGroup.localToWorld);
-                for (int i = 0; i < chunk.Count; i++)
+                var enumerator         = new ChunkEntityWithIndexEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count, firstEntityIndex);
+                while (enumerator.NextEntityIndex(out var i, out var entityInQueryIndex))
                 {
                     var localToWorld   = chunkLocalToWorlds[i];
                     var rotation       = quaternion.LookRotationSafe(localToWorld.Forward, localToWorld.Up);
                     var position       = localToWorld.Position;
                     var rigidTransform = new RigidTransform(rotation, position);
-                    ProcessEntity(firstEntityIndex + i, chunkEntities[i], chunkColliders[i], rigidTransform);
+                    ProcessEntity(entityInQueryIndex, chunkEntities[i], chunkColliders[i], in rigidTransform);
                 }
             }
 
-            private void ProcessParentScale(ArchetypeChunk chunk, int firstEntityIndex)
+            private void ProcessParentScale(in ArchetypeChunk chunk, bool useEnabledMask, in v128 chunkEnabledMask, int firstEntityIndex)
             {
                 var chunkEntities      = chunk.GetNativeArray(typeGroup.entity);
                 var chunkColliders     = chunk.GetNativeArray(typeGroup.collider);
                 var chunkLocalToWorlds = chunk.GetNativeArray(typeGroup.localToWorld);
                 var chunkScales        = chunk.GetNativeArray(typeGroup.scale);
-                for (int i = 0; i < chunk.Count; i++)
+                var enumerator         = new ChunkEntityWithIndexEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count, firstEntityIndex);
+                while (enumerator.NextEntityIndex(out var i, out var entityInQueryIndex))
                 {
                     var localToWorld   = chunkLocalToWorlds[i];
                     var rotation       = quaternion.LookRotationSafe(localToWorld.Forward, localToWorld.Up);
                     var position       = localToWorld.Position;
                     var rigidTransform = new RigidTransform(rotation, position);
                     var collider       = Physics.ScaleCollider(chunkColliders[i], chunkScales[i]);
-                    ProcessEntity(firstEntityIndex + i, chunkEntities[i], collider, rigidTransform);
+                    ProcessEntity(entityInQueryIndex, chunkEntities[i], in collider, in rigidTransform);
                 }
             }
 
-            private void ProcessEntity(int index, Entity entity, Collider collider, RigidTransform rigidTransform)
+            private void ProcessEntity(int index, Entity entity, in Collider collider, in RigidTransform rigidTransform)
             {
-                Aabb aabb = Physics.AabbFrom(collider, rigidTransform);
+                Aabb aabb = Physics.AabbFrom(in collider, in rigidTransform);
 
                 colliderAoS[index] = new ColliderAoSData
                 {
@@ -284,13 +303,17 @@ namespace OptimizationAdventures
                 minBucket      = math.clamp(minBucket, 0, layer.worldSubdivisionsPerAxis - 1);
                 maxBucket      = math.clamp(maxBucket, 0, layer.worldSubdivisionsPerAxis - 1);
 
-                if (math.all(minBucket == maxBucket))
+                if (math.any(math.isnan(aabb.min) | math.isnan(aabb.max)))
+                {
+                    layerIndices[index] = layer.bucketStartsAndCounts.Length - 1;
+                }
+                else if (math.all(minBucket == maxBucket))
                 {
                     layerIndices[index] = (minBucket.x * layer.worldSubdivisionsPerAxis.y + minBucket.y) * layer.worldSubdivisionsPerAxis.z + minBucket.z;
                 }
                 else
                 {
-                    layerIndices[index] = layer.bucketStartsAndCounts.Length - 1;
+                    layerIndices[index] = layer.bucketStartsAndCounts.Length - 2;
                 }
             }
         }

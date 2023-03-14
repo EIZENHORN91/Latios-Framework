@@ -6,6 +6,100 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic
 Versioning](http://semver.org/spec/v2.0.0.html).
 
+You can find changelogs for the individual modules inside the Documentation\~
+directory.
+
+## [0.6.6] – 2023-3-13
+
+Officially supports Entities [1.0.0 prerelease 15]
+
+### Changed
+
+-   Updated Kinemation to v0.6.6
+
+## [0.6.5] – 2023-2-18
+
+Officially supports Entities [1.0.0 prerelease 15]
+
+### Changed
+
+-   Updated Core to v0.6.5
+-   Updated Psyshock to v0.6.5
+-   Updated Myri to v0.6.5
+-   Updated Kinemation to v0.6.5
+
+## [0.6.4] – 2022-12-29
+
+Officially supports Entities [1.0.0 prerelease 15]
+
+### Changed
+
+-   Updated Core to v0.6.4
+-   Updated Psyshock to v0.6.4
+-   Updated Kinemation to v0.6.4
+
+## [0.6.3] – 2022-12-19
+
+Officially supports Entities [1.0.0 prerelease 15]
+
+### Changed
+
+-   Updated Psyshock to v0.6.3
+
+## [0.6.2] – 2022-12-10
+
+Officially supports Entities [1.0.0 prerelease 15]
+
+### Changed
+
+-   Updated Kinemation to v0.6.2
+
+## [0.6.1] – 2022-11-28
+
+Officially supports Entities [1.0.0 prerelease 15]
+
+### Changed
+
+-   Updated Core to v0.6.1
+-   Updated Psyshock to v0.6.1
+-   Updated Myri to v0.6.1
+-   Updated Kinemation to v0.6.1
+
+## [0.6.0] – 2022-11-16
+
+Officially supports Entities [1.0.0 experimental]
+
+### Changed
+
+-   Updated Core to v0.6.0
+-   Updated Psyshock to v0.6.0
+-   Updated Myri to v0.6.0
+-   Updated Kinemation to v0.6.0
+
+## [0.5.8] – 2022-11-10
+
+Officially supports Entities [0.51.1]
+
+### Added
+
+-   Added Optimization Adventure Part 8
+
+### Changed
+
+-   Updated Core to v0.5.8
+-   Updated Kinemation to v0.5.8
+
+## [0.5.7] – 2022-8-28
+
+Officially supports Entities [0.51.1]
+
+### Changed
+
+-   Updated Core to v0.5.7
+-   Updated Psyshock to v0.5.7
+-   Updated Myri to v0.5.7
+-   Updated Kinemation to v0.5.7
+
 ## [0.5.6] – 2022-8-21
 
 Officially supports Entities [0.50.1] – [0.51.1]

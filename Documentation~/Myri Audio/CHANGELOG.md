@@ -6,6 +6,47 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic
 Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [0.6.5] – 2023-2-18
+
+Officially supports Entities [1.0.0 prerelease 15]
+
+This release only contains internal modernizations of the code
+
+## [0.6.1] – 2022-11-28
+
+Officially supports Entities [1.0.0 prerelease 15]
+
+This release only contains internal compatibility changes
+
+## [0.6.0] – 2022-11-16
+
+Officially supports Entities [1.0.0 experimental]
+
+### Added
+
+-   *New Feature:* Added Smart Blobber which allows for providing custom audio
+    samples without an `AudioClip` object
+-   Added `IListenerProfileBuilder` for building profiles with stack-allocated
+    data
+-   Added `Baker.BuildAndRegisterListenerProfileBlob()` extension method for
+    creating `ListenerProfileBlob` blob assets
+
+### Changed
+
+-   **Breaking:** Authoring has been completely rewritten to use baking workflow
+
+### Improved
+
+-   `AudioSystem` is now a Burst-compiled ISystem
+
+## [0.5.7] – 2022-8-28
+
+Officially supports Entities [0.51.1]
+
+### Changed
+
+-   Explicitly applied Script Updater changes for hashmap renaming
+
 ## [0.5.6] – 2022-8-21
 
 Officially supports Entities [0.50.1] – [0.51.1]
